@@ -34,10 +34,19 @@ export const AuthProvider = ({ children }) => {
   // Función de login
   const login = useCallback(async (credentials) => {
     try {
+      // Detectar si es email o teléfono
+      const { identifier, password } = credentials;
+      const isEmail = identifier.includes('@');
+
+      const body = {
+        password,
+        ...(isEmail ? { email: identifier } : { phone: identifier }),
+      };
+
       const response = await fetch(ENDPOINTS.auth.login, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
