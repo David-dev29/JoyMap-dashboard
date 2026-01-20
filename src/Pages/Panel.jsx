@@ -6,12 +6,15 @@ import ExpandableCard from "../Components/Dashboard/ExplanableCard";
 import CategoryButton from "../Components/Dashboard/CategoryButton";
 import Pagination from "../Components/Dashboard/Pagination";
 import { ENDPOINTS, SOCKET_URL } from "../config/api";
+import { useAuth } from "../context/AuthContext";
+import { getMyCategories, getAllCategories } from "../services/api";
 
 const socket = io(SOCKET_URL);
 
 
 
 const Panel = () => {
+  const { user } = useAuth();
   const [categories, setCategories] = useState([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [store, setStore] = useState(null);
@@ -30,25 +33,32 @@ const Panel = () => {
   }, []);
   
   
-  // 🔹 Cargar categorías al iniciar
+  // Cargar categorias segun rol del usuario
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        // Traemos las categorías con sus productos
-        const res = await fetch(`${ENDPOINTS.categories.base}?populate=products`);
-        const data = await res.json();
-  
-        setCategories(data.response || []);
-        if (data.response.length > 0) {
-          setSelectedCategoryId(data.response[0]._id);
+        let data;
+
+        if (user?.role === 'business_owner') {
+          // Solo datos de su negocio
+          data = await getMyCategories('products');
+        } else {
+          // Admin: todos los datos
+          data = await getAllCategories('products');
+        }
+
+        const categoriesList = data.response || data.categories || [];
+        setCategories(categoriesList);
+        if (categoriesList.length > 0) {
+          setSelectedCategoryId(categoriesList[0]._id);
         }
       } catch (error) {
         // Error loading categories
       }
     };
-  
+
     fetchCategories();
-  }, []);
+  }, [user]);
   
 
   // 🔹 Conectar sockets en tiempo real

@@ -1,11 +1,13 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useMyBusiness } from "../../hooks/useMyBusiness";
 import logo from "../../assets/logoTxtuBICA.png";
 import { PanelRightOpen, Menu, LogOut, User } from "lucide-react";
 
 const Navbar = ({ isSidebarOpen, onToggleSidebar }) => {
   const { user, logout } = useAuth();
+  const { business } = useMyBusiness();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -52,12 +54,19 @@ const Navbar = ({ isSidebarOpen, onToggleSidebar }) => {
 
             {/* Usuario y Logout - SIEMPRE VISIBLE */}
             <div className="flex items-center gap-4">
-              {/* Nombre del usuario */}
+              {/* Nombre del usuario y negocio */}
               <div className="flex items-center gap-2 text-white">
                 <User size={18} className="text-orange-400" />
-                <span className="text-sm font-medium">
-                  {user?.name || 'Usuario'}
-                </span>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">
+                    {user?.name || 'Usuario'}
+                  </span>
+                  {business && (
+                    <span className="text-xs text-orange-300">
+                      {business.name}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Separador */}

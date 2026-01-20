@@ -82,6 +82,16 @@ export const ENDPOINTS = {
     login: `${API_BASE_URL}/auth/login`,
     me: `${API_BASE_URL}/auth/me`,
   },
+
+  // Datos del usuario autenticado (/api/me/*)
+  me: {
+    profile: `${API_BASE_URL}/me`,
+    business: `${API_BASE_URL}/me/business`,
+    products: `${API_BASE_URL}/me/products`,
+    categories: `${API_BASE_URL}/me/categories`,
+    orders: `${API_BASE_URL}/me/orders`,
+    ordersStats: `${API_BASE_URL}/me/orders/stats`,
+  },
 };
 
 /**

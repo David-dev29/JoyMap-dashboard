@@ -15,6 +15,7 @@ import "react-toastify/dist/ReactToastify.css";
 import OrderToastContent from "./OrderToastContent";
 import SearchSidebarModal from "./SearchSidebarModal";
 import { ENDPOINTS, SOCKET_URL, SOCKET_CONFIG } from "../../config/api";
+import { getMyOrders } from "../../services/api";
 
 
 const OrdersDashboard = () => {
@@ -144,14 +145,9 @@ const [isSearchOpen, setIsSearchOpen] = useState(false);
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        // ✨ CAMBIO: Apuntamos al nuevo endpoint '/active'
-        const res = await fetch(ENDPOINTS.orders.active); 
-        const data = await res.json();
-        
-        // ✨ CÓDIGO MÁS LIMPIO: Ya no necesitamos filtrar en el frontend.
-        // La data que llega ya está filtrada desde el backend.
+        // Usar getMyOrders que filtra por rol en el backend
+        const data = await getMyOrders();
         setOrders(data.orders || []);
-    
       } catch (err) {
         // Error fetching orders
       }
