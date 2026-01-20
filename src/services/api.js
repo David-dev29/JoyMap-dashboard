@@ -53,3 +53,94 @@ export const getAllCategories = async (populate = '') => {
   const res = await authFetch(url);
   return res.json();
 };
+
+// ============================================
+// Funciones por negocio especifico (Admin)
+// ============================================
+
+// Categorias de un negocio especifico
+export const getBusinessCategories = async (businessId, populate = '') => {
+  const url = populate
+    ? `${ENDPOINTS.businesses.categories(businessId)}?populate=${populate}`
+    : ENDPOINTS.businesses.categories(businessId);
+  const res = await authFetch(url);
+  return res.json();
+};
+
+// Productos de un negocio especifico
+export const getBusinessProducts = async (businessId) => {
+  const res = await authFetch(ENDPOINTS.businesses.products(businessId));
+  return res.json();
+};
+
+// Ordenes de un negocio especifico
+export const getBusinessOrders = async (businessId) => {
+  const res = await authFetch(ENDPOINTS.businesses.orders(businessId));
+  return res.json();
+};
+
+// Estadisticas de un negocio especifico
+export const getBusinessStats = async (businessId) => {
+  const res = await authFetch(ENDPOINTS.businesses.stats(businessId));
+  return res.json();
+};
+
+// ============================================
+// CRUD de productos
+// ============================================
+
+// Crear producto
+export const createProduct = async (productData) => {
+  const res = await authFetch(ENDPOINTS.products.create, {
+    method: 'POST',
+    body: JSON.stringify(productData),
+  });
+  return res.json();
+};
+
+// Actualizar producto
+export const updateProduct = async (productId, productData) => {
+  const res = await authFetch(ENDPOINTS.products.byId(productId), {
+    method: 'PUT',
+    body: JSON.stringify(productData),
+  });
+  return res.json();
+};
+
+// Eliminar producto
+export const deleteProduct = async (productId) => {
+  const res = await authFetch(ENDPOINTS.products.byId(productId), {
+    method: 'DELETE',
+  });
+  return res.json();
+};
+
+// ============================================
+// CRUD de categorias
+// ============================================
+
+// Crear categoria
+export const createCategory = async (categoryData) => {
+  const res = await authFetch(ENDPOINTS.categories.create, {
+    method: 'POST',
+    body: JSON.stringify(categoryData),
+  });
+  return res.json();
+};
+
+// Actualizar categoria
+export const updateCategory = async (categoryId, categoryData) => {
+  const res = await authFetch(ENDPOINTS.categories.byId(categoryId), {
+    method: 'PUT',
+    body: JSON.stringify(categoryData),
+  });
+  return res.json();
+};
+
+// Eliminar categoria
+export const deleteCategory = async (categoryId) => {
+  const res = await authFetch(ENDPOINTS.categories.byId(categoryId), {
+    method: 'DELETE',
+  });
+  return res.json();
+};

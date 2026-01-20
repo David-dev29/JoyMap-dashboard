@@ -65,6 +65,11 @@ export const ENDPOINTS = {
     base: `${API_BASE_URL}/businesses`,
     create: `${API_BASE_URL}/businesses/create`,
     byId: (id) => `${API_BASE_URL}/businesses/${id}`,
+    // Endpoints por negocio específico
+    categories: (businessId) => `${API_BASE_URL}/businesses/${businessId}/categories`,
+    products: (businessId) => `${API_BASE_URL}/businesses/${businessId}/products`,
+    orders: (businessId) => `${API_BASE_URL}/businesses/${businessId}/orders`,
+    stats: (businessId) => `${API_BASE_URL}/businesses/${businessId}/stats`,
   },
 
   // Categorías de negocios

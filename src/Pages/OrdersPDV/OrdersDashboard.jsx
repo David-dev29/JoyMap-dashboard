@@ -7,6 +7,7 @@ import DeliveryCard from "./DeliveryCard";
 import DeliverySidebarModal from "./DeliverySidebarModal";
 import DeleteOrderModal from "./DeleteOrderModal";
 import CancelOrderModal from "./CancelOrderModal";
+import NoBusinessSelected from "../../Components/Dashboard/NoBusinessSelected";
 import { motion } from "framer-motion";
 import { io } from "socket.io-client";
 import notificationSoundFile from "../../assets/notifications.mp3";
@@ -15,17 +16,26 @@ import "react-toastify/dist/ReactToastify.css";
 import OrderToastContent from "./OrderToastContent";
 import SearchSidebarModal from "./SearchSidebarModal";
 import { ENDPOINTS, SOCKET_URL, SOCKET_CONFIG } from "../../config/api";
-import { getMyOrders } from "../../services/api";
+import { getMyOrders, getBusinessOrders } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
+import { useBusiness } from "../../context/BusinessContext";
+import { ShoppingCart } from "lucide-react";
 
 
 const OrdersDashboard = () => {
+  const { user } = useAuth();
+  const { selectedBusiness, loading: businessLoading } = useBusiness();
+
   const [activeTab, setActiveTab] = useState("todo");
-  // 1. Añade un nuevo estado para controlar el modal de búsqueda
-const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [canPlaySound, setCanPlaySound] = useState(false);
+
+  // Determinar si es admin
+  const isAdmin = user?.role === 'admin';
 
   // Modal de eliminar
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -144,36 +154,64 @@ const [isSearchOpen, setIsSearchOpen] = useState(false);
   // Traer pedidos y configurar socket
   useEffect(() => {
     const fetchOrders = async () => {
+      // Si es admin y no hay negocio seleccionado, no cargar
+      if (isAdmin && !selectedBusiness) {
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
       try {
-        // Usar getMyOrders que filtra por rol en el backend
-        const data = await getMyOrders();
+        let data;
+
+        if (isAdmin && selectedBusiness) {
+          // Admin: cargar ordenes del negocio seleccionado
+          data = await getBusinessOrders(selectedBusiness._id);
+        } else {
+          // Business owner: cargar sus ordenes
+          data = await getMyOrders();
+        }
+
         setOrders(data.orders || []);
       } catch (err) {
         // Error fetching orders
+        setOrders([]);
+      } finally {
+        setLoading(false);
       }
     };
-    
-    fetchOrders();
+
+    if (!businessLoading) {
+      fetchOrders();
+    }
 
     const socket = io(SOCKET_URL, SOCKET_CONFIG.options);
-    
 
     const notificationSound = new Audio(notificationSoundFile);
     notificationSound.preload = "auto";
     notificationSound.volume = 0.5;
 
     socket.on("order:new", (newOrder) => {
+      // Filtrar por negocio seleccionado
+      if (selectedBusiness && newOrder.businessId !== selectedBusiness._id) {
+        return;
+      }
       setOrders((prev) => [newOrder, ...prev]);
       handleToast(newOrder);
       if (canPlaySound) playNotificationSound(notificationSound);
     });
 
     socket.on("order:update", (updatedOrder) => {
+      // Filtrar por negocio seleccionado
+      if (selectedBusiness && updatedOrder.businessId !== selectedBusiness._id) {
+        return;
+      }
       handleUpdate(updatedOrder);
     });
 
     return () => socket.disconnect();
-  }, [canPlaySound]);
+  }, [canPlaySound, selectedBusiness, isAdmin, businessLoading]);
 
   // Sonido de notificación
   const playNotificationSound = (audio) => {
@@ -261,22 +299,59 @@ const handleToast = (newOrder) => {
     },
   ];
 
+  // Mostrar mensaje si admin no ha seleccionado negocio
+  if (isAdmin && !selectedBusiness && !businessLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4">
+        <NoBusinessSelected
+          title="Selecciona un negocio"
+          message="Para ver los pedidos, primero selecciona un negocio desde el selector en la barra superior."
+          icon={ShoppingCart}
+        />
+      </div>
+    );
+  }
+
+  // Mostrar loading mientras se cargan los datos
+  if (loading || businessLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-slate-500">Cargando pedidos...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-       {/* ✨ CAMBIO: Eliminamos toastClassName para evitar conflictos */}
        <ToastContainer
         position="top-right"
         autoClose={false}
-        closeOnClick={false} 
+        closeOnClick={false}
         pauseOnHover
         draggable
         bodyClassName="p-0 m-0"
       />
 
+      {/* Header con nombre del negocio */}
+      {selectedBusiness && (
+        <div className="mx-4 mt-4">
+          <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-3 text-white shadow-lg">
+            <h2 className="text-lg font-bold">{selectedBusiness.name}</h2>
+            <p className="text-orange-100 text-sm">
+              {orders.length} pedidos activos
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="mx-4 bg-gray-50 py-4 flex items-center justify-between">
         <ServiceTypeTabs serviceTypes={serviceTypes} />
-        {/* 2. Pasa la función para abrir el modal a ActionButtons */}
-      <ActionButtons onSearchClick={() => setIsSearchOpen(true)} />
+        <ActionButtons onSearchClick={() => setIsSearchOpen(true)} />
       </div>
 
       <div className="mx-4 bg-gray-50 border border-gray-200 shadow-sm rounded-xl overflow-hidden">
