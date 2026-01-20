@@ -5,10 +5,9 @@ import ProfilePage from "../Pages/Menu/Profile";
 import ExpandableCard from "../Components/Dashboard/ExplanableCard";
 import CategoryButton from "../Components/Dashboard/CategoryButton";
 import Pagination from "../Components/Dashboard/Pagination";
+import { ENDPOINTS, SOCKET_URL } from "../config/api";
 
-// 👉 URL base de tu backend
-const API_URL = "http://localhost:3000/api/categories";
-const socket = io("http://localhost:3000");
+const socket = io(SOCKET_URL);
 
 
 
@@ -20,11 +19,11 @@ const Panel = () => {
   useEffect(() => {
     const fetchStore = async () => {
       try {
-        const res = await fetch("http://localhost:3000/api/stores");
+        const res = await fetch(ENDPOINTS.stores.base);
         const data = await res.json();
         if (data.success && data.store_data) setStore(data.store_data); // <- CORRECTO
       } catch (err) {
-        console.error("Error trayendo la tienda:", err);
+        // Error fetching store
       }
     };
     fetchStore();
@@ -36,7 +35,7 @@ const Panel = () => {
     const fetchCategories = async () => {
       try {
         // Traemos las categorías con sus productos
-        const res = await fetch(`${API_URL}?populate=products`);
+        const res = await fetch(`${ENDPOINTS.categories.base}?populate=products`);
         const data = await res.json();
   
         setCategories(data.response || []);
@@ -44,7 +43,7 @@ const Panel = () => {
           setSelectedCategoryId(data.response[0]._id);
         }
       } catch (error) {
-        console.error("Error cargando categorías:", error);
+        // Error loading categories
       }
     };
   
@@ -83,7 +82,7 @@ const Panel = () => {
     const storeId = "64abc123def4567890fedcba"; // Traelo de tu usuario, store actual o props
   
     try {
-      await fetch(`${API_URL}/create`, {
+      await fetch(ENDPOINTS.categories.create, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -92,7 +91,7 @@ const Panel = () => {
         }),
       });
     } catch (error) {
-      console.error("Error creando categoría:", error);
+      // Error creating category
     }
   };
   
@@ -101,22 +100,22 @@ const Panel = () => {
   // 🔹 Actualizar nombre
   const updateCategoryName = async (id, newName) => {
     try {
-      await fetch(`${API_URL}/${id}`, {
+      await fetch(ENDPOINTS.categories.byId(id), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newName }),
       });
     } catch (error) {
-      console.error("Error actualizando categoría:", error);
+      // Error updating category
     }
   };
 
   // 🔹 Eliminar categoría
   const handleDeleteCategory = async (id) => {
     try {
-      await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+      await fetch(ENDPOINTS.categories.byId(id), { method: "DELETE" });
     } catch (error) {
-      console.error("Error eliminando categoría:", error);
+      // Error deleting category
     }
   };
 
@@ -126,7 +125,7 @@ const Panel = () => {
     if (!category) return;
 
     try {
-      await fetch(API_URL, {
+      await fetch(ENDPOINTS.categories.base, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -135,7 +134,7 @@ const Panel = () => {
         }),
       });
     } catch (error) {
-      console.error("Error duplicando categoría:", error);
+      // Error duplicating category
     }
   };
 

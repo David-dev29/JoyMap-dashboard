@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Edit3, Plus, MoreVertical, Info } from 'lucide-react';
+import { ENDPOINTS } from '../../config/api';
 
 const KitchenConfigModal = ({ isOpen, onClose }) => {
   const [autoUpdate, setAutoUpdate] = useState(true);
@@ -14,10 +15,10 @@ const KitchenConfigModal = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen) {
       const storeId = "68bf9b9665affa1a7e26510f"; // mismo ID que usas para crear
-      fetch(`http://localhost:3000/api/kitchens?storeId=${storeId}`)
+      fetch(ENDPOINTS.kitchens.byStore(storeId))
         .then(res => res.json())
         .then(data => setKitchens(data))
-        .catch(err => console.error("Error cargando cocinas:", err));
+        .catch(() => {});
     }
   }, [isOpen]);
   
@@ -27,14 +28,13 @@ const KitchenConfigModal = ({ isOpen, onClose }) => {
     if (!newKitchenName.trim()) return;
 
     try {
-      const res = await fetch("http://localhost:3000/api/kitchens/create", {
+      const res = await fetch(ENDPOINTS.kitchens.create, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newKitchenName, storeId: "68bf9b9665affa1a7e26510f" }),
       });
 
       if (!res.ok) {
-        console.error("Error al crear cocina");
         return;
       }
 
@@ -43,14 +43,14 @@ const KitchenConfigModal = ({ isOpen, onClose }) => {
       setNewKitchenName("");
       setIsAdding(false);
     } catch (error) {
-      console.error("Error de red al crear cocina:", error);
+      // Error creating kitchen
     }
   };
 
   // Eliminar cocina
 const handleDeleteKitchen = async (id) => {
   try {
-    const res = await fetch(`http://localhost:3000/api/kitchens/${id}`, {
+    const res = await fetch(ENDPOINTS.kitchens.byId(id), {
       method: "DELETE",
     });
 
@@ -58,14 +58,14 @@ const handleDeleteKitchen = async (id) => {
 
     setKitchens(prev => prev.filter(k => k._id !== id));
   } catch (err) {
-    console.error(err);
+    // Error deleting kitchen
   }
 };
 
 // Editar cocina
 const handleEditKitchen = async (id, newName) => {
   try {
-    const res = await fetch(`http://localhost:3000/api/kitchens/${id}`, {
+    const res = await fetch(ENDPOINTS.kitchens.byId(id), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: newName }),
@@ -76,7 +76,7 @@ const handleEditKitchen = async (id, newName) => {
     const updated = await res.json();
     setKitchens(prev => prev.map(k => k._id === id ? updated : k));
   } catch (err) {
-    console.error(err);
+    // Error editing kitchen
   }
 };
 

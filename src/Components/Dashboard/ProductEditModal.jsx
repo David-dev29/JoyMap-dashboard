@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { X, Upload, Plus, Info } from "lucide-react";
+import { ENDPOINTS } from "../../config/api";
 
 const ProductEditModal = ({ product, isOpen, onClose, onSave }) => {
   const [activeTab, setActiveTab] = useState("Simple");
@@ -23,13 +24,12 @@ const ProductEditModal = ({ product, isOpen, onClose, onSave }) => {
   useEffect(() => {
     const fetchSubcategories = async () => {
       try {
-        const response = await fetch("http://192.168.100.9:3000/api/subcategories");
+        const response = await fetch(ENDPOINTS.subcategories.base);
         const result = await response.json();
         
-        console.log("📦 Subcategorías cargadas:", result.data);
         setSubcategoriesOptions(result.data || []);
       } catch (error) {
-        console.error("Error cargando subcategorías:", error);
+        // Error loading subcategories
       }
     };
 
@@ -40,11 +40,11 @@ const ProductEditModal = ({ product, isOpen, onClose, onSave }) => {
   useEffect(() => {
     const fetchKitchens = async () => {
       try {
-        const res = await fetch("http://192.168.100.9:3000/api/kitchens");
+        const res = await fetch(ENDPOINTS.kitchens.base);
         const data = await res.json();
         setKitchens(data);
       } catch (error) {
-        console.error("Error cargando cocinas:", error);
+        // Error loading kitchens
       }
     };
 
@@ -54,14 +54,6 @@ const ProductEditModal = ({ product, isOpen, onClose, onSave }) => {
   // Cargar producto en el modal
   useEffect(() => {
     if (product) {
-      console.log("📦 Producto cargado en modal:", {
-        name: product.name,
-        category: product.category,
-        categoryId: product.categoryId,
-        subcategory: product.subcategory,
-        subcategoryId: product.subcategoryId
-      });
-      
       setProductName(product.name || "");
       setDescription(product.description || "");
       setPrice(product.price != null ? product.price.toString() : "");
@@ -88,7 +80,6 @@ const ProductEditModal = ({ product, isOpen, onClose, onSave }) => {
   // 🆕 Obtener subcategorías de la categoría actual
   const getCurrentSubcategories = () => {
     if (!category || !subcategoriesOptions.length) {
-      console.log("⚠️ Sin categoría o sin opciones:", { category, optionsLength: subcategoriesOptions.length });
       return [];
     }
     
@@ -99,25 +90,10 @@ const ProductEditModal = ({ product, isOpen, onClose, onSave }) => {
         .replace(/\s+/g, "-") || ""; // 🔥 Agregamos reemplazo de espacios
     
     const normalizedCategory = normalizeStr(category);
-    
-    console.log("🔍 Buscando subcategorías para:", {
-      original: category,
-      normalized: normalizedCategory,
-      disponibles: subcategoriesOptions.map(c => ({
-        name: c.categoryName,
-        normalized: normalizeStr(c.categoryName)
-      }))
-    });
-    
+
     const categoryData = subcategoriesOptions.find(
       cat => normalizeStr(cat.categoryName) === normalizedCategory
     );
-    
-    if (categoryData) {
-      console.log("✅ Subcategorías encontradas:", categoryData.subcategories);
-    } else {
-      console.warn("❌ No se encontró la categoría en el map");
-    }
     
     return categoryData?.subcategories || [];
   };
@@ -161,7 +137,6 @@ const ProductEditModal = ({ product, isOpen, onClose, onSave }) => {
       formData.append("image", fileInputRef.current.files[0]);
     }
 
-    console.log("💾 Guardando producto con subcategoryId:", subcategoryId);
     onSave(formData);
   };
 

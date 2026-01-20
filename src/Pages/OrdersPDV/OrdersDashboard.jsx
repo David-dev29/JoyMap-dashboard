@@ -12,8 +12,9 @@ import { io } from "socket.io-client";
 import notificationSoundFile from "../../assets/notifications.mp3";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import OrderToastContent from "./OrderToastContent"; // ✨ CAMBIO: Importamos el nuevo componente
+import OrderToastContent from "./OrderToastContent";
 import SearchSidebarModal from "./SearchSidebarModal";
+import { ENDPOINTS, SOCKET_URL, SOCKET_CONFIG } from "../../config/api";
 
 
 const OrdersDashboard = () => {
@@ -68,7 +69,6 @@ const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Abrir modal de rechazar desde DeliveryCard
   const handleOpenCancelModal = (order) => {
-    console.log("Abrir modal de cancelación para:", order);
     setOrderToReject(order);
     setIsCancelModalOpen(true);
   };
@@ -78,7 +78,7 @@ const [isSearchOpen, setIsSearchOpen] = useState(false);
   const handleConfirmDelete = async () => {
     if (!orderToDelete) return;
     try {
-      await fetch(`http://localhost:3000/api/orders/${orderToDelete._id}`, {
+      await fetch(ENDPOINTS.orders.byId(orderToDelete._id), {
         method: "DELETE",
       });
       setOrders((prev) => prev.filter((o) => o._id !== orderToDelete._id));
@@ -88,7 +88,6 @@ const [isSearchOpen, setIsSearchOpen] = useState(false);
         autoClose: 3000,
       });
     } catch (err) {
-      console.error("Error al eliminar pedido:", err);
       toast.error("Error al eliminar pedido", {
         autoClose: 4000,
       });
@@ -100,7 +99,7 @@ const [isSearchOpen, setIsSearchOpen] = useState(false);
     if (!orderToReject) return;
     try {
       // 1. Llama a la API para actualizar en la BD (esto no cambia)
-      await fetch(`http://localhost:3000/api/orders/${orderToReject._id}/cancel`, {
+      await fetch(ENDPOINTS.orders.cancel(orderToReject._id), {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ reason }),
@@ -123,7 +122,6 @@ const [isSearchOpen, setIsSearchOpen] = useState(false);
       setOrderToReject(null);
 
     } catch (err) {
-      console.error("Error al rechazar pedido:", err);
       toast.error("Error al rechazar pedido", { autoClose: 4000 });
     }
 };
@@ -147,7 +145,7 @@ const [isSearchOpen, setIsSearchOpen] = useState(false);
     const fetchOrders = async () => {
       try {
         // ✨ CAMBIO: Apuntamos al nuevo endpoint '/active'
-        const res = await fetch("http://localhost:3000/api/orders/active"); 
+        const res = await fetch(ENDPOINTS.orders.active); 
         const data = await res.json();
         
         // ✨ CÓDIGO MÁS LIMPIO: Ya no necesitamos filtrar en el frontend.
@@ -155,24 +153,14 @@ const [isSearchOpen, setIsSearchOpen] = useState(false);
         setOrders(data.orders || []);
     
       } catch (err) {
-        console.error("Error al traer pedidos:", err);
+        // Error fetching orders
       }
     };
     
     fetchOrders();
 
-    const socket = io("http://192.168.100.9:3000", {
-      transports: ["websocket"], // fuerza WebSocket puro
-      reconnection: true,
-    });
+    const socket = io(SOCKET_URL, SOCKET_CONFIG.options);
     
-    socket.on("connect", () => {
-      console.log("✅ Conectado al servidor Socket.IO:", socket.id);
-    });
-    
-    socket.on("connect_error", (err) => {
-      console.error("❌ Error de conexión:", err.message);
-    });
 
     const notificationSound = new Audio(notificationSoundFile);
     notificationSound.preload = "auto";

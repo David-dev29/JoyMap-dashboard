@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, MapPin, Clock, DollarSign, X, Upload, Save, Filter, Tag, PlusCircle } from 'lucide-react';
-
-const API_URL = 'http://192.168.100.7:3000/api/businesses';
-const CATEGORIES_API_URL = 'http://192.168.100.7:3000/api/business-categories';
+import { ENDPOINTS } from '../../config/api';
 
 export default function BusinessesManager() {
   const [businesses, setBusinesses] = useState([]);
@@ -46,9 +44,8 @@ export default function BusinessesManager() {
 
   const loadCategories = async () => {
     try {
-      const res = await fetch(`${CATEGORIES_API_URL}`);
+      const res = await fetch(ENDPOINTS.businessCategories.base);
       const data = await res.json();
-      console.log('📂 Categorías cargadas:', data);
       const loadedCategories = data.response || data || [];
       setCategories(loadedCategories);
       
@@ -60,19 +57,17 @@ export default function BusinessesManager() {
         }));
       }
     } catch (error) {
-      console.error('❌ Error cargando categorías:', error);
+      // Error loading categories
     }
   };
 
   const loadBusinesses = async () => {
     try {
-      const res = await fetch(`${API_URL}`);
+      const res = await fetch(ENDPOINTS.businesses.base);
       const data = await res.json();
-      console.log('📦 Negocios cargados:', data);
       setBusinesses(data.response || []);
       setLoading(false);
     } catch (error) {
-      console.error('❌ Error cargando negocios:', error);
       setLoading(false);
     }
   };
@@ -84,7 +79,7 @@ export default function BusinessesManager() {
     }
 
     try {
-      const res = await fetch(CATEGORIES_API_URL, {
+      const res = await fetch(ENDPOINTS.businessCategories.base, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -97,7 +92,6 @@ export default function BusinessesManager() {
       const data = await res.json();
       
       if (data.success) {
-        console.log('✅ Categoría creada:', data.response);
         await loadCategories();
         setFormData({...formData, category: data.response._id});
         setShowCategoryModal(false);
@@ -107,7 +101,6 @@ export default function BusinessesManager() {
         alert(data.message || 'Error al crear categoría');
       }
     } catch (error) {
-      console.error('❌ Error creando categoría:', error);
       alert('Error al crear categoría');
     }
   };
@@ -129,13 +122,11 @@ export default function BusinessesManager() {
     if (bannerFile) formDataToSend.append('banner', bannerFile);
 
     try {
-      const url = editingBusiness 
-        ? `${API_URL}/${editingBusiness._id}`
-        : `${API_URL}/create`;
+      const url = editingBusiness
+        ? ENDPOINTS.businesses.byId(editingBusiness._id)
+        : ENDPOINTS.businesses.create;
       
       const method = editingBusiness ? 'PUT' : 'POST';
-      
-      console.log('🔄 Guardando negocio:', { url, method });
       
       const res = await fetch(url, {
         method,
@@ -145,15 +136,12 @@ export default function BusinessesManager() {
       const data = await res.json();
       
       if (data.success) {
-        console.log('✅ Negocio guardado exitosamente');
         closeModal();
         loadBusinesses();
       } else {
-        console.error('❌ Error del servidor:', data.message);
         alert(data.message || 'Error al guardar el negocio');
       }
     } catch (error) {
-      console.error('❌ Error guardando negocio:', error);
       alert('Error al guardar el negocio');
     }
   };
@@ -162,20 +150,17 @@ export default function BusinessesManager() {
     if (!confirm('¿Estás seguro de eliminar este negocio?')) return;
     
     try {
-      const res = await fetch(`${API_URL}/${id}`, {
+      const res = await fetch(ENDPOINTS.businesses.byId(id), {
         method: 'DELETE',
       });
       
       const data = await res.json();
       if (data.success) {
-        console.log('✅ Negocio eliminado');
         loadBusinesses();
       } else {
-        console.error('❌ Error al eliminar:', data.message);
         alert(data.message || 'Error al eliminar el negocio');
       }
     } catch (error) {
-      console.error('❌ Error eliminando negocio:', error);
       alert('Error al eliminar el negocio');
     }
   };

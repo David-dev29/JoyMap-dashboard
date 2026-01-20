@@ -11,7 +11,7 @@ import KitchenMain from './Pages/Kitchen/MainKitchen';
 import InventoryPage from './Pages/Inventory/Inventory';
 import ClientsPage from './Pages/Customers/Customers';
 import DiscountCodesPage from './Pages/Marketing/Discounts';
-import SalesPage from './Pages/Sales/Orderhistory.jsx';
+import SalesPage from './Pages/Sales/OrderHistory.jsx';
 import FinancialRecords from './Pages/Sales/FinalcialRecords.jsx';
 import CashCount from './Pages/Sales/CashCount.jsx';
 import WhatsAppChatbotRecovery from './Pages/ChatBot/WhatsAppChatbotRecovery.jsx';

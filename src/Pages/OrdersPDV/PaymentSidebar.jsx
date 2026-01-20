@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X } from 'lucide-react';
 import PaymentFormView from './PaymentFormView';
 import PaymentSummaryView from './PaymentSummaryView';
+import { ENDPOINTS } from '../../config/api';
 
 const PaymentSidebar = ({ isOpen, onClose, order, onUpdate }) => {
   const [view, setView] = useState('form');
@@ -32,7 +33,7 @@ const PaymentSidebar = ({ isOpen, onClose, order, onUpdate }) => {
 
   const handleFinalizeOrder = async (currentOrder = order) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/orders/update/${currentOrder._id}`, {
+      const response = await fetch(ENDPOINTS.orders.update(currentOrder._id), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'delivered' }),
@@ -43,13 +44,13 @@ const PaymentSidebar = ({ isOpen, onClose, order, onUpdate }) => {
       onUpdate(finalOrderData.response);
       onClose();
     } catch (error) {
-      console.error("Error al finalizar:", error);
+      // Error finalizing order
     }
   };
 
   const handleRegisterPayment = async (paymentData, finalize = false) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/orders/${order._id}/register-payment`, {
+      const response = await fetch(ENDPOINTS.orders.registerPayment(order._id), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(paymentData),
@@ -67,7 +68,7 @@ const PaymentSidebar = ({ isOpen, onClose, order, onUpdate }) => {
       }
       // Ya no necesitamos setView('summary') aquí. El useEffect es el único jefe.
     } catch (error) {
-      console.error("Error en la operación de pago:", error);
+      // Error registering payment
     }
   };
 

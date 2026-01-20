@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
-import ProductEditModal from "./ProductEditModal"; // Ajusta la ruta si es distinta
+import ProductEditModal from "./ProductEditModal";
+import { ENDPOINTS } from "../../config/api";
 
 // 👉 Normaliza texto (quita acentos y pasa a minúsculas)
 const normalizeText = (text) =>
@@ -19,12 +20,11 @@ const SearchModal = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const res = await fetch("http://localhost:3000/api/products");
+        const res = await fetch(ENDPOINTS.products.base);
         const data = await res.json();
-        console.log("📦 data:", data);
         setProducts(data.response || []);
       } catch (error) {
-        console.error("Error al cargar productos:", error);
+        // Error loading products
       }
     };
     fetchProducts();

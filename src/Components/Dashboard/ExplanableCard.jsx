@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronDown, GripVertical } from "lucide-react";
 import { io } from "socket.io-client";
 import ProductEditModal from "./ProductEditModal";
-import CategoryImageModal from "./CategoryImageModal"; // 🔹 Importar el nuevo modal
+import CategoryImageModal from "./CategoryImageModal";
+import { ENDPOINTS, SOCKET_URL } from "../../config/api";
 
 const ExpandableCard = ({
   category,
@@ -25,7 +26,7 @@ const ExpandableCard = ({
   const [height, setHeight] = useState("0px");
 
   useEffect(() => {
-    const socket = io("http://localhost:3000");
+    const socket = io(SOCKET_URL);
 
     socket.on("productUpdated", (updatedProduct) => {
       setProducts((prev) =>
@@ -77,24 +78,15 @@ const ExpandableCard = ({
   // 🔹 Función para guardar cambios de categoría
   const handleCategorySave = async (formData) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/categories/${category.id}`, {
+      const response = await fetch(ENDPOINTS.categories.byId(category.id), {
         method: "PUT",
         body: formData,
       });
 
       if (response.ok) {
-        const updatedCategory = await response.json();
-        console.log("Categoría actualizada:", updatedCategory);
-        
-        // Aquí puedes actualizar el estado del componente padre si es necesario
-        // o manejar la respuesta según tu estructura de datos
-        
         setIsCategoryModalOpen(false);
       } else {
         const errorData = await response.json();
-        console.error("Error al actualizar categoría:", errorData);
-        
-        // Mostrar mensaje de error específico
         if (errorData.message) {
           alert(`Error: ${errorData.message}`);
         } else {
@@ -102,9 +94,6 @@ const ExpandableCard = ({
         }
       }
     } catch (error) {
-      console.error("Error de red al actualizar categoría:", error);
-      
-      // Manejar errores de Multer específicamente
       if (error.message && error.message.includes('File too large')) {
         alert("Error: Una o más imágenes son demasiado grandes. Máximo permitido: 10MB");
       } else {
@@ -115,18 +104,16 @@ const ExpandableCard = ({
 
   const handleDeleteProduct = async (_id) => {
     try {
-      const res = await fetch(`http://localhost:3000/api/products/${_id}`, {
+      const res = await fetch(ENDPOINTS.products.byId(_id), {
         method: "DELETE",
       });
 
       if (res.ok) {
         setProducts((prev) => prev.filter((p) => p._id !== _id));
         setDropdownOpen((prev) => ({ ...prev, [_id]: false }));
-      } else {
-        console.error("Error al eliminar producto:", await res.json());
       }
     } catch (error) {
-      console.error("Error de red al eliminar producto:", error);
+      // Error deleting product
     }
   };
 
@@ -405,7 +392,7 @@ const ExpandableCard = ({
               let savedProduct;
               if (selectedProduct._id) {
                 const response = await fetch(
-                  `http://localhost:3000/api/products/${selectedProduct._id}`,
+                  ENDPOINTS.products.byId(selectedProduct._id),
                   {
                     method: "PUT",
                     body: formData,
@@ -422,7 +409,7 @@ const ExpandableCard = ({
                 setSelectedProduct(savedProduct);
               } else {
                 const response = await fetch(
-                  "http://localhost:3000/api/products/create",
+                  ENDPOINTS.products.create,
                   {
                     method: "POST",
                     body: formData,
@@ -431,10 +418,6 @@ const ExpandableCard = ({
                 savedProduct = await response.json();
 
                 if (!response.ok) {
-                  console.error(
-                    "Error al crear producto:",
-                    savedProduct.message
-                  );
                   return;
                 }
 
@@ -445,7 +428,7 @@ const ExpandableCard = ({
 
               setIsModalOpen(false);
             } catch (error) {
-              console.error("Error guardando producto:", error);
+              // Error saving product
             }
           }}
         />

@@ -8,6 +8,7 @@ import {
 import WhatsAppDropdown from "./WhatsAppDropdown";
 import StatusDropdown from "./StatusDropdown";
 import PaymentSidebar from "./PaymentSidebar";
+import { ENDPOINTS } from "../../config/api";
 
 
 // ✨ Lógica de estados centralizada para un código más limpio y robusto
@@ -119,7 +120,7 @@ const handleAccept = async (e) => {
   e.stopPropagation();
   setLoading(true);
   try {
-    const res = await fetch(`http://localhost:3000/api/orders/update/${currentOrder._id}`, {
+    const res = await fetch(ENDPOINTS.orders.update(currentOrder._id), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "preparing" }),
@@ -128,7 +129,7 @@ const handleAccept = async (e) => {
     // ✨ SOLUCIÓN: Pasa la respuesta de la API al padre
     onUpdate?.(data.response);
   } catch (err) {
-    console.error(err);
+    // Error accepting order
   } finally {
     setLoading(false);
   }
@@ -136,7 +137,7 @@ const handleAccept = async (e) => {
  
 const handleStatusChange = async (newStatus) => {
   try {
-    const res = await fetch(`http://localhost:3000/api/orders/update/${currentOrder._id}`, {
+    const res = await fetch(ENDPOINTS.orders.update(currentOrder._id), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
@@ -145,7 +146,7 @@ const handleStatusChange = async (newStatus) => {
     // ✨ SOLUCIÓN: Pasa la respuesta de la API al padre
     onUpdate?.(data.response);
   } catch (err) {
-    console.error(err);
+    // Error changing status
   }
 };
 

@@ -3,8 +3,9 @@ import { io } from "socket.io-client";
 import Dropdown from '../../Components/Dashboard/ConfigButton'
 import Modal from '../../Components/Dashboard/MobileModal'
 import SearchModal from '../../Components/Dashboard/SearchModal'
+import { ENDPOINTS, SOCKET_URL } from "../../config/api";
 
-const socket = io("http://localhost:3000");
+const socket = io(SOCKET_URL);
 
 const Profile = ({ store, onUpdate }) => {
   const [businessName, setBusinessName] = useState("");
@@ -54,18 +55,16 @@ const Profile = ({ store, onUpdate }) => {
     formData.append("businessName", businessName);
   
     try {
-      const response = await fetch(`http://localhost:3000/api/stores/${store._id}`, {
+      const response = await fetch(ENDPOINTS.stores.byId(store._id), {
         method: "PUT",
         body: formData,
       });
       const data = await response.json();
       if (response.ok) {
         onUpdate(data.response);
-      } else {
-        console.error(data.message || "Error al actualizar");
       }
     } catch (error) {
-      console.error("Error al subir archivo:", error);
+      // Error uploading file
     }
   };
   
@@ -97,7 +96,7 @@ const Profile = ({ store, onUpdate }) => {
       formData.append("businessName", businessName);
   
       try {
-        const response = await fetch(`http://localhost:3000/api/stores/${store._id}`, {
+        const response = await fetch(ENDPOINTS.stores.byId(store._id), {
           method: "PUT",
           body: formData,
         });
@@ -106,7 +105,7 @@ const Profile = ({ store, onUpdate }) => {
           onUpdate(data.response);
         }
       } catch (err) {
-        console.error("Error actualizando nombre:", err);
+        // Error updating name
       }
     }, 1000);
   

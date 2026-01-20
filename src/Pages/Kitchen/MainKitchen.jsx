@@ -6,8 +6,9 @@ import KitchenSubtitle from './KitchenSubtitle';
 import KitchenGrid from './KitchenGrid';
 import KitchenConfigModal from './KitchenConfigModal';
 import ConfirmModal from './ConfirmModal';
+import { ENDPOINTS, SOCKET_URL } from '../../config/api';
 
-const socket = io("http://localhost:3000");
+const socket = io(SOCKET_URL);
 
 const KitchenMain = () => {
   const [activeTab, setActiveTab] = useState(null);
@@ -41,34 +42,34 @@ const KitchenMain = () => {
   // ------------------- FETCH: Cocinas -------------------
   useEffect(() => {
     const storeId = "68bf9b9665affa1a7e26510f";
-    fetch(`http://localhost:3000/api/kitchens?storeId=${storeId}`)
+    fetch(ENDPOINTS.kitchens.byStore(storeId))
       .then(res => res.json())
       .then(data => {
         setKitchens(data);
         if (data.length > 0 && !activeTab) setActiveTab(data[0]._id);
       })
-      .catch(err => console.error(err));
+      .catch(() => {});
   }, []);
 
   // ------------------- FETCH: Pedidos activos -------------------
   useEffect(() => {
-    fetch("http://localhost:3000/api/orders/active")
+    fetch(ENDPOINTS.orders.active)
       .then(res => res.json())
       .then(data => setOrders(data.orders))
-      .catch(err => console.error(err));
+      .catch(() => {});
   }, []);
 
   // ------------------- FUNC: Marcar item como preparado -------------------
   const handleItemPrepared = async (orderId, itemId) => {
     try {
-      await fetch(`http://localhost:3000/api/orders/${orderId}/items/${itemId}`, {
+      await fetch(`${ENDPOINTS.orders.byId(orderId)}/items/${itemId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "prepared" })
       });
       // Backend emite 'order:update', no actualizar local
     } catch (err) {
-      console.error(err);
+      // Error marking item as prepared
     }
   };
 
