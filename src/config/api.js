@@ -76,6 +76,12 @@ export const ENDPOINTS = {
   subcategories: {
     base: `${API_BASE_URL}/subcategories`,
   },
+
+  // Autenticación
+  auth: {
+    login: `${API_BASE_URL}/auth/login`,
+    me: `${API_BASE_URL}/auth/me`,
+  },
 };
 
 /**
@@ -91,6 +97,46 @@ export const SOCKET_CONFIG = {
   },
 };
 
+/**
+ * Obtener headers de autenticación
+ * @returns {Object} Headers con Authorization si existe token
+ */
+export const getAuthHeaders = () => {
+  const token = localStorage.getItem('auth_token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
+};
+
+/**
+ * Fetch con autenticación automática
+ * Redirige a /login si recibe 401
+ * @param {string} url - URL del endpoint
+ * @param {Object} options - Opciones de fetch
+ * @returns {Promise<Response>}
+ */
+export const authFetch = async (url, options = {}) => {
+  const token = localStorage.getItem('auth_token');
+
+  const headers = {
+    ...(!(options.body instanceof FormData) && { 'Content-Type': 'application/json' }),
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...options.headers,
+  };
+
+  const response = await fetch(url, { ...options, headers });
+
+  // Token expirado o inválido
+  if (response.status === 401) {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    window.location.href = '/login';
+  }
+
+  return response;
+};
+
 export default {
   API_BASE_URL,
   SOCKET_URL,
@@ -99,4 +145,6 @@ export default {
   ENV,
   isDev,
   isProd,
+  getAuthHeaders,
+  authFetch,
 };

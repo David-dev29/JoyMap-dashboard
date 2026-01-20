@@ -1,8 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import logo from '../../assets/KUMA.png';
 
 export default function Dropdown() {
   const [isOpen, setIsOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
@@ -10,6 +14,12 @@ export default function Dropdown() {
 
   const closeDropdown = () => {
     setIsOpen(false);
+  };
+
+  const handleSignOut = () => {
+    logout();
+    navigate('/login');
+    closeDropdown();
   };
 
   return (
@@ -26,7 +36,7 @@ export default function Dropdown() {
       src={logo}
       alt="jane avatar"
     />
-    <span className="font-semibold">KUMA</span>
+    <span className="font-semibold">{user?.name || 'Usuario'}</span>
   </a>
   
   <svg
@@ -62,10 +72,10 @@ export default function Dropdown() {
               />
               <div className="mx-1">
                 <h1 className="text-sm font-semibold text-gray-700 dark:text-gray-700">
-                  KUMA USER
+                  {user?.name || 'Usuario'}
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  kuma@exampl.com
+                  {user?.email || 'correo@ejemplo.com'}
                 </p>
               </div>
             </a>
@@ -174,17 +184,17 @@ export default function Dropdown() {
 
               Facturas
             </a>
-            <a
-              href="#"
-              className="block px-4 py-3 text-sm text-gray-600 capitalize transition-colors duration-200 transform dark:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-100 dark:hover:text-gray-700"
+            <button
+              onClick={handleSignOut}
+              className="w-full text-left block px-4 py-3 text-sm text-gray-600 capitalize transition-colors duration-200 transform dark:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-100 dark:hover:text-gray-700"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" width="24" height="24" stroke-width="2">
-  <path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"></path>
-  <path d="M9 12h12l-3 -3"></path>
-  <path d="M18 15l3 -3"></path>
-</svg>
-              Sign Out
-            </a>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" width="24" height="24" strokeWidth="2" className="inline mr-2">
+                <path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"></path>
+                <path d="M9 12h12l-3 -3"></path>
+                <path d="M18 15l3 -3"></path>
+              </svg>
+              Cerrar sesion
+            </button>
           </div>
         )}
       </div>

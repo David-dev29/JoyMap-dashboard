@@ -1,7 +1,14 @@
 // App.jsx
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './Components/ProtectedRoute';
 import DashboardLayout from './Layouts/DashboardLayout';
 
+// Auth Pages
+import Login from './Pages/Auth/Login';
+import Unauthorized from './Pages/Auth/Unauthorized';
+
+// Dashboard Pages
 import OrderAcceptance from './Pages/Menu/OrderConfiguration';
 import Profile from './Pages/Menu/Profile';
 import WelcomePage from './Pages/Menu/Welcome';
@@ -18,13 +25,27 @@ import WhatsAppChatbotRecovery from './Pages/ChatBot/WhatsAppChatbotRecovery.jsx
 import BusinessesManager from './Pages/Businesses/BusinessesManager.jsx';
 
 const router = createBrowserRouter([
+  // Rutas publicas
+  {
+    path: "/login",
+    element: <Login />,
+  },
+  {
+    path: "/unauthorized",
+    element: <Unauthorized />,
+  },
+  // Rutas protegidas
   {
     path: "/",
-    element: <DashboardLayout />, // Layout con Navbar + Sidebar
+    element: (
+      <ProtectedRoute>
+        <DashboardLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,
-        element: <Panel />, // Ruta principal
+        element: <Panel />,
       },
       {
         path: "panel",
@@ -78,12 +99,14 @@ const router = createBrowserRouter([
         path: "chatbot",
         element: <WhatsAppChatbotRecovery />,
       },
-      // Agrega más rutas según necesites
     ],
   },
 ]);
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 }
-
