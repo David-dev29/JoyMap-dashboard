@@ -1,13 +1,14 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { useMyBusiness } from "../../hooks/useMyBusiness";
+import { useBusiness } from "../../context/BusinessContext";
+import BusinessSelector from "./BusinessSelector";
 import logo from "../../assets/logoTxtuBICA.png";
 import { PanelRightOpen, Menu, LogOut, User } from "lucide-react";
 
 const Navbar = ({ isSidebarOpen, onToggleSidebar }) => {
   const { user, logout } = useAuth();
-  const { business } = useMyBusiness();
+  const { selectedBusiness, canChangeBusiness } = useBusiness();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -49,6 +50,13 @@ const Navbar = ({ isSidebarOpen, onToggleSidebar }) => {
               />
             </a>
 
+            {/* Selector de negocio (solo admin) */}
+            {canChangeBusiness && (
+              <div className="ml-4">
+                <BusinessSelector />
+              </div>
+            )}
+
             {/* Spacer */}
             <div className="flex-1"></div>
 
@@ -61,9 +69,10 @@ const Navbar = ({ isSidebarOpen, onToggleSidebar }) => {
                   <span className="text-sm font-medium">
                     {user?.name || 'Usuario'}
                   </span>
-                  {business && (
+                  {/* Mostrar negocio para business_owner (admin usa el selector) */}
+                  {!canChangeBusiness && selectedBusiness && (
                     <span className="text-xs text-orange-300">
-                      {business.name}
+                      {selectedBusiness.name}
                     </span>
                   )}
                 </div>

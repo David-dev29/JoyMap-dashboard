@@ -17,11 +17,16 @@ import {
   MapPin,
   Store,
 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 
 const SidebarMenu = ({ collapsed }) => {
+  const { user } = useAuth();
   const [openMenu, setOpenMenu] = useState("menu");
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Verificar si el usuario es admin
+  const isAdmin = user?.role === 'admin';
 
   const renderArrow = (menu) =>
     openMenu === menu ? <ChevronUp size={16} /> : <ChevronDown size={16} />;
@@ -120,19 +125,21 @@ const SidebarMenu = ({ collapsed }) => {
             </div>
           )}
 
-          {/* 🏪 NEGOCIOS - NUEVA SECCIÓN */}
-          <button
-            onClick={() => navigate("/businesses")}
-            className={`${menuItemClass} rounded-xl ${isActive("/businesses")} relative`}
-          >
-            <MapPin size={16} className="text-white" />
-            {!collapsed && <span className="font-semibold text-white">Negocios</span>}
-            {!collapsed && (
-              <div className="absolute top-3 right-4">
-                <span className="inline-flex rounded-full h-2 w-2 bg-blue-400 shadow-lg border border-blue-200"></span>
-              </div>
-            )}
-          </button>
+          {/* NEGOCIOS - Solo admin */}
+          {isAdmin && (
+            <button
+              onClick={() => navigate("/businesses")}
+              className={`${menuItemClass} rounded-xl ${isActive("/businesses")} relative`}
+            >
+              <MapPin size={16} className="text-white" />
+              {!collapsed && <span className="font-semibold text-white">Negocios</span>}
+              {!collapsed && (
+                <div className="absolute top-3 right-4">
+                  <span className="inline-flex rounded-full h-2 w-2 bg-blue-400 shadow-lg border border-blue-200"></span>
+                </div>
+              )}
+            </button>
+          )}
 
           {/* Ventas */}
           <div className="rounded-xl overflow-hidden">
@@ -227,53 +234,62 @@ const SidebarMenu = ({ collapsed }) => {
             </div>
           )}
 
-          <button 
-            onClick={() => navigate("/chatbot")}
-            className={menuItemClass + " relative rounded-xl"}>
-            <MessageCircle size={16} className="text-white" />
-            {!collapsed && <span>Chatbot</span>}
-            {!collapsed && (
-              <div className="absolute top-3 right-4 flex">
-                <span className="animate-ping absolute inline-flex h-2.5 w-2.5 rounded-full bg-yellow-300 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-400 shadow-lg border border-yellow-200"></span>
-              </div>
-            )}
-          </button>
-
-          <button
-            onClick={() => navigate("/clients")}
-            className={`${menuItemClass} rounded-xl ${isActive("/clients")}`}
-          >
-            <Users size={16} className="text-white" />
-            {!collapsed && <span>Clientes</span>}
-          </button>
-
-          <div className="rounded-xl overflow-hidden">
+          {/* Chatbot - Solo admin */}
+          {isAdmin && (
             <button
-              onClick={() => setOpenMenu(openMenu === "promociones" ? null : "promociones")}
-              className={`${menuItemClass} justify-between rounded-xl ${
-                isSectionActive("promociones", ["/discounts"])
-                  ? menuOpenClass + " rounded-b-none"
-                  : ""
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <Tag size={16} className="text-white" />
-                {!collapsed && <span>Marketing</span>}
-              </div>
-              {!collapsed && <div className="text-white/80">{renderArrow("promociones")}</div>}
+              onClick={() => navigate("/chatbot")}
+              className={menuItemClass + " relative rounded-xl"}>
+              <MessageCircle size={16} className="text-white" />
+              {!collapsed && <span>Chatbot</span>}
+              {!collapsed && (
+                <div className="absolute top-3 right-4 flex">
+                  <span className="animate-ping absolute inline-flex h-2.5 w-2.5 rounded-full bg-yellow-300 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-400 shadow-lg border border-yellow-200"></span>
+                </div>
+              )}
             </button>
-            <div
-              className={`transition-all duration-500 overflow-hidden bg-slate-800/50 ${
-                openMenu === "promociones" && !collapsed ? "max-h-24 opacity-100" : "max-h-0 opacity-0"
-              }`}
+          )}
+
+          {/* Clientes - Solo admin */}
+          {isAdmin && (
+            <button
+              onClick={() => navigate("/clients")}
+              className={`${menuItemClass} rounded-xl ${isActive("/clients")}`}
             >
-              {renderSubMenu([
-                { label: "Códigos de descuento", path: "/discounts" },
-                { label: "Reseñas" },
-              ])}
+              <Users size={16} className="text-white" />
+              {!collapsed && <span>Clientes</span>}
+            </button>
+          )}
+
+          {/* Marketing - Solo admin */}
+          {isAdmin && (
+            <div className="rounded-xl overflow-hidden">
+              <button
+                onClick={() => setOpenMenu(openMenu === "promociones" ? null : "promociones")}
+                className={`${menuItemClass} justify-between rounded-xl ${
+                  isSectionActive("promociones", ["/discounts"])
+                    ? menuOpenClass + " rounded-b-none"
+                    : ""
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <Tag size={16} className="text-white" />
+                  {!collapsed && <span>Marketing</span>}
+                </div>
+                {!collapsed && <div className="text-white/80">{renderArrow("promociones")}</div>}
+              </button>
+              <div
+                className={`transition-all duration-500 overflow-hidden bg-slate-800/50 ${
+                  openMenu === "promociones" && !collapsed ? "max-h-24 opacity-100" : "max-h-0 opacity-0"
+                }`}
+              >
+                {renderSubMenu([
+                  { label: "Códigos de descuento", path: "/discounts" },
+                  { label: "Reseñas" },
+                ])}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="my-6 relative">
             <div className="absolute inset-0 flex items-center">
