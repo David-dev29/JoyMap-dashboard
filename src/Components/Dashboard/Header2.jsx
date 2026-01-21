@@ -17,11 +17,11 @@ const Navbar = ({ isSidebarOpen, onToggleSidebar }) => {
   };
 
   return (
-    <div className="w-full shadow-2xl border-b border-gray-700 sticky top-0 left-0 z-30 backdrop-blur-xl">
-      <section className="relative mx-auto h-12">
+    <div className="w-full shadow-2xl border-b border-gray-700 sticky top-0 left-0 z-30 backdrop-blur-xl overflow-visible">
+      <section className="relative mx-auto h-12 overflow-visible">
         {/* Navbar */}
         <nav
-          className="flex justify-between text-white h-12 items-center px-2 relative overflow-hidden"
+          className="flex justify-between text-white h-12 items-center px-2 relative overflow-visible"
           style={{
             background: `
               linear-gradient(135deg, rgba(251, 146, 60, 0.1) 0%, transparent 50%, rgba(139, 92, 246, 0.1) 100%),

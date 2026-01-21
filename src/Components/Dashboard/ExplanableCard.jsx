@@ -1,15 +1,18 @@
-import { useState, useRef, useEffect } from "react";
-import { ChevronDown, GripVertical } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { ChevronDown, GripVertical, ToggleLeft, ToggleRight } from "lucide-react";
 import { io } from "socket.io-client";
 import ProductEditModal from "./ProductEditModal";
 import CategoryImageModal from "./CategoryImageModal";
-import { ENDPOINTS, SOCKET_URL } from "../../config/api";
+import { ENDPOINTS, SOCKET_URL, authFetch } from "../../config/api";
 
 const ExpandableCard = ({
   category,
   updateCategoryName,
   onDeleteCategory,
   onDuplicateCategory,
+  businessId,
+  searchTerm = "",
+  availabilityFilter = "all",
 }) => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -42,6 +45,46 @@ const ExpandableCard = ({
   const maxChars = 30;
   const charCount = categoryName.length;
 
+  // Filtrar productos segun busqueda y disponibilidad
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      // Filtro por nombre
+      const matchesSearch = !searchTerm ||
+        product.name?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      // Filtro por disponibilidad
+      const isAvailable = product.availability === "Disponible";
+      const matchesAvailability =
+        availabilityFilter === "all" ||
+        (availabilityFilter === "available" && isAvailable) ||
+        (availabilityFilter === "unavailable" && !isAvailable);
+
+      return matchesSearch && matchesAvailability;
+    });
+  }, [products, searchTerm, availabilityFilter]);
+
+  // Toggle de disponibilidad rapido
+  const handleToggleAvailability = async (e, product) => {
+    e.stopPropagation();
+    const newAvailability = product.availability === "Disponible" ? "No disponible" : "Disponible";
+
+    try {
+      const res = await authFetch(ENDPOINTS.products.byId(product._id), {
+        method: "PUT",
+        body: JSON.stringify({ availability: newAvailability }),
+      });
+
+      if (res.ok) {
+        const updatedProduct = await res.json();
+        setProducts(prev =>
+          prev.map(p => p._id === product._id ? { ...p, availability: newAvailability } : p)
+        );
+      }
+    } catch (error) {
+      // Error toggling availability
+    }
+  };
+
   const toggleExpand = () => setIsExpanded(!isExpanded);
 
   const handleAddProductClick = () => {
@@ -54,6 +97,7 @@ const ExpandableCard = ({
       availability: "Disponible",
       stockControl: false,
       categoryId: category.id,
+      businessId: businessId, // Incluir businessId para nuevos productos
       image: null,
     });
     setIsModalOpen(true);
@@ -127,7 +171,7 @@ const ExpandableCard = ({
     if (contentRef.current) {
       setHeight(isExpanded ? `${contentRef.current.scrollHeight}px` : "0px");
     }
-  }, [isExpanded, products]);
+  }, [isExpanded, products, filteredProducts]);
 
   useEffect(() => {
     document.body.style.overflow = (isModalOpen || isCategoryModalOpen) ? "hidden" : "";
@@ -192,8 +236,10 @@ const ExpandableCard = ({
         {/* Botón + Producto con indicador */}
         <div className="flex items-center space-x- ml-3 gap-2">
           {/* Indicador de cantidad de productos */}
-          <div className="w-6 h-6 bg-white text-gray-500 text-xs font-semibold flex items-center justify-center rounded-full shadow-md">
-            {products.length}
+          <div className="min-w-6 h-6 px-2 bg-white text-gray-500 text-xs font-semibold flex items-center justify-center rounded-full shadow-md">
+            {filteredProducts.length !== products.length
+              ? `${filteredProducts.length}/${products.length}`
+              : products.length}
           </div>
 
           {/* Botón agregar producto */}
@@ -257,55 +303,89 @@ const ExpandableCard = ({
         style={{ maxHeight: height }}
         className="overflow-hidden transition-all duration-300"
       >
-        {products.map((product) => (
-          <div
-            key={product._id}
-            className="flex items-center justify-between p-4 bg-white border-t relative cursor-pointer hover:bg-gray-50"
-            onClick={(e) => handleCardClick(e, product)}
-          >
-            <div className="flex items-center space-x-3">
-              {product.image ? (
-                <img
-                  src={
-                    product.image.startsWith("http")
-                      ? product.image
-                      : `https://${product.image}${product._t ? `?t=${product._t}` : ""}`
-                  }
-                  alt={product.name}
-                  className="w-12 h-12 object-cover rounded"
-                />
-              ) : (
-                <div className="w-12 h-12 flex items-center justify-center bg-gray-50 rounded-lg">
-                  {/* 🍔 SVG de comida como placeholder */}
-                  <svg
-                    className="w-6 h-6 text-gray-800 dark:text-gray-300"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="m4 12 2.66667-1 2.66666 1L12 11l2.6667 1 2.6666-1L20 12m-1 5H5v1c0 1.1046.89543 2 2 2h10c1.1046 0 2-.8954 2-2v-1ZM5 9.00003h14v-1c0-2.20914-1.7909-4-4-4H9c-2.20914 0-4 1.79086-4 4v1ZM18.5 14h-13c-.82843 0-1.5.6716-1.5 1.5 0 .8285.67157 1.5 1.5 1.5h13c.8284 0 1.5-.6715 1.5-1.5 0-.8284-.6716-1.5-1.5-1.5Z"
-                    />
-                  </svg>
-                </div>
-              )}
-              <span className="font-medium truncate">{product.name}</span>
-            </div>
-
+        {filteredProducts.length === 0 && products.length > 0 ? (
+          <div className="p-4 text-center text-gray-500 text-sm">
+            No hay productos que coincidan con los filtros
+          </div>
+        ) : (
+          filteredProducts.map((product) => (
             <div
-              className="flex items-center space-x-2"
-              onClick={(e) => e.stopPropagation()}
+              key={product._id}
+              className={`flex items-center justify-between p-4 bg-white border-t relative cursor-pointer hover:bg-gray-50 ${
+                product.availability !== "Disponible" ? "opacity-60" : ""
+              }`}
+              onClick={(e) => handleCardClick(e, product)}
             >
-              <span className="text-gray-900">
-                MXN {product.price.toFixed(2)}
-              </span>
+              <div className="flex items-center space-x-3">
+                {product.image ? (
+                  <img
+                    src={
+                      product.image.startsWith("http")
+                        ? product.image
+                        : `https://${product.image}${product._t ? `?t=${product._t}` : ""}`
+                    }
+                    alt={product.name}
+                    className="w-12 h-12 object-cover rounded"
+                  />
+                ) : (
+                  <div className="w-12 h-12 flex items-center justify-center bg-gray-50 rounded-lg">
+                    {/* 🍔 SVG de comida como placeholder */}
+                    <svg
+                      className="w-6 h-6 text-gray-800 dark:text-gray-300"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="m4 12 2.66667-1 2.66666 1L12 11l2.6667 1 2.6666-1L20 12m-1 5H5v1c0 1.1046.89543 2 2 2h10c1.1046 0 2-.8954 2-2v-1ZM5 9.00003h14v-1c0-2.20914-1.7909-4-4-4H9c-2.20914 0-4 1.79086-4 4v1ZM18.5 14h-13c-.82843 0-1.5.6716-1.5 1.5 0 .8285.67157 1.5 1.5 1.5h13c.8284 0 1.5-.6715 1.5-1.5 0-.8284-.6716-1.5-1.5-1.5Z"
+                      />
+                    </svg>
+                  </div>
+                )}
+                <div className="flex flex-col">
+                  <span className="font-medium truncate">{product.name}</span>
+                  {/* Indicador de disponibilidad */}
+                  <span className={`text-xs ${
+                    product.availability === "Disponible"
+                      ? "text-green-600"
+                      : "text-red-500"
+                  }`}>
+                    {product.availability}
+                  </span>
+                </div>
+              </div>
+
+              <div
+                className="flex items-center space-x-3"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Toggle de disponibilidad */}
+                <button
+                  onClick={(e) => handleToggleAvailability(e, product)}
+                  className={`p-1 rounded-md transition-colors ${
+                    product.availability === "Disponible"
+                      ? "text-green-500 hover:bg-green-50"
+                      : "text-gray-400 hover:bg-gray-100"
+                  }`}
+                  title={product.availability === "Disponible" ? "Marcar como no disponible" : "Marcar como disponible"}
+                >
+                  {product.availability === "Disponible" ? (
+                    <ToggleRight size={24} />
+                  ) : (
+                    <ToggleLeft size={24} />
+                  )}
+                </button>
+
+                <span className="text-gray-900 font-medium">
+                  MXN {product.price?.toFixed(2) || "0.00"}
+                </span>
 
               <div className="relative">
                 <button
@@ -378,13 +458,15 @@ const ExpandableCard = ({
               </div>
             </div>
           </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Modal de productos */}
       {isModalOpen && selectedProduct && (
         <ProductEditModal
           product={selectedProduct}
+          businessId={businessId}
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onSave={async (formData) => {

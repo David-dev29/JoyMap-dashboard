@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import io from "socket.io-client";
+import { Search, Filter, Package } from "lucide-react";
 
 import ProfilePage from "../Pages/Menu/Profile";
 import ExpandableCard from "../Components/Dashboard/ExplanableCard";
@@ -24,6 +25,10 @@ const Panel = () => {
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [store, setStore] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Filtros de productos
+  const [searchTerm, setSearchTerm] = useState("");
+  const [availabilityFilter, setAvailabilityFilter] = useState("all"); // all, available, unavailable
 
   // Determinar si es admin
   const isAdmin = user?.role === 'admin';
@@ -163,6 +168,26 @@ const Panel = () => {
     }
   };
 
+  // Calcular totales de productos
+  const productStats = useMemo(() => {
+    let total = 0;
+    let available = 0;
+    let unavailable = 0;
+
+    categories.forEach(cat => {
+      (cat.products || []).forEach(product => {
+        total++;
+        if (product.availability === "Disponible") {
+          available++;
+        } else {
+          unavailable++;
+        }
+      });
+    });
+
+    return { total, available, unavailable };
+  }, [categories]);
+
   // Mostrar mensaje si admin no ha seleccionado negocio
   if (isAdmin && !selectedBusiness && !businessLoading) {
     return (
@@ -193,15 +218,92 @@ const Panel = () => {
     <div>
       <ProfilePage store={store} onUpdate={setStore} />
 
-      {/* Header con nombre del negocio */}
+      {/* Header con nombre del negocio y filtros */}
       {selectedBusiness && (
-        <div className="px-4 pt-4">
+        <div className="px-4 pt-4 space-y-3">
+          {/* Info del negocio */}
           <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-4 text-white shadow-lg">
-            <h2 className="text-lg font-bold">{selectedBusiness.name}</h2>
-            <p className="text-orange-100 text-sm">
-              {categories.length} categorias - {categories.reduce((acc, cat) => acc + (cat.products?.length || 0), 0)} productos
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold">{selectedBusiness.name}</h2>
+                <p className="text-orange-100 text-sm">
+                  {categories.length} categorias - {productStats.total} productos
+                </p>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <div className="flex items-center gap-1 bg-white/20 px-2 py-1 rounded-lg">
+                  <div className="w-2 h-2 bg-green-300 rounded-full"></div>
+                  <span>{productStats.available} disponibles</span>
+                </div>
+                <div className="flex items-center gap-1 bg-white/20 px-2 py-1 rounded-lg">
+                  <div className="w-2 h-2 bg-red-300 rounded-full"></div>
+                  <span>{productStats.unavailable} no disponibles</span>
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* Barra de busqueda y filtros */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Busqueda */}
+            <div className="relative flex-1">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar productos por nombre..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
+            {/* Filtro de disponibilidad */}
+            <div className="flex items-center gap-2">
+              <Filter size={18} className="text-gray-500" />
+              <select
+                value={availabilityFilter}
+                onChange={(e) => setAvailabilityFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+              >
+                <option value="all">Todos ({productStats.total})</option>
+                <option value="available">Disponibles ({productStats.available})</option>
+                <option value="unavailable">No disponibles ({productStats.unavailable})</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Indicador de filtros activos */}
+          {(searchTerm || availabilityFilter !== "all") && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Package size={16} />
+              <span>
+                Mostrando productos filtrados
+                {searchTerm && <span className="font-medium"> con "{searchTerm}"</span>}
+                {availabilityFilter !== "all" && (
+                  <span className="font-medium">
+                    {availabilityFilter === "available" ? " disponibles" : " no disponibles"}
+                  </span>
+                )}
+              </span>
+              <button
+                onClick={() => {
+                  setSearchTerm("");
+                  setAvailabilityFilter("all");
+                }}
+                className="ml-2 text-orange-500 hover:text-orange-600 underline"
+              >
+                Limpiar filtros
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -235,6 +337,9 @@ const Panel = () => {
               updateCategoryName={updateCategoryName}
               onDeleteCategory={handleDeleteCategory}
               onDuplicateCategory={handleDuplicateCategory}
+              businessId={selectedBusiness?._id}
+              searchTerm={searchTerm}
+              availabilityFilter={availabilityFilter}
             />
           ))
         )}

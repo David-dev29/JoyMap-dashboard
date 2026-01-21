@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { X, Upload, Plus, Info } from "lucide-react";
 import { ENDPOINTS } from "../../config/api";
 
-const ProductEditModal = ({ product, isOpen, onClose, onSave }) => {
+const ProductEditModal = ({ product, businessId, isOpen, onClose, onSave }) => {
   const [activeTab, setActiveTab] = useState("Simple");
   const [stockControl, setStockControl] = useState(false);
   const [availability, setAvailability] = useState("Disponible");
@@ -121,7 +121,13 @@ const ProductEditModal = ({ product, isOpen, onClose, onSave }) => {
     formData.append("stockControl", stockControl);
     formData.append("categoryId", product.categoryId);
     formData.append("subcategory", subcategory);
-    formData.append("subcategoryId", subcategoryId); // 🆕 Guardar el ID
+    formData.append("subcategoryId", subcategoryId);
+
+    // Incluir businessId para nuevos productos
+    const effectiveBusinessId = product.businessId || businessId;
+    if (effectiveBusinessId) {
+      formData.append("businessId", effectiveBusinessId);
+    }
 
     // Cocina seleccionada
     if (kitchen) {

@@ -23,10 +23,10 @@ export const BusinessProvider = ({ children }) => {
 
       try {
         if (user?.role === 'admin') {
-          // Admin: cargar todos los negocios
-          const res = await authFetch(ENDPOINTS.businesses.base);
+          // Admin: cargar TODOS los negocios (sin filtro de tipo)
+          const res = await authFetch(ENDPOINTS.businesses.all);
           const data = await res.json();
-          const businessList = data.businesses || data.response || [];
+          const businessList = data.businesses || data.response || data.data || [];
           setBusinesses(businessList);
 
           // Restaurar seleccion de localStorage o seleccionar el primero
