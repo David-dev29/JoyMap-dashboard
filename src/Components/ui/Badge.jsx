@@ -1,18 +1,18 @@
 const variants = {
-  default: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
-  primary: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  success: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  warning: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  danger: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  info: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  purple: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  default: 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-300',
+  primary: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
+  success: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  warning: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  danger: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  info: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  purple: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
 };
 
 const sizes = {
-  xs: 'px-1.5 py-0.5 text-xs',
-  sm: 'px-2 py-0.5 text-xs',
-  md: 'px-2.5 py-1 text-sm',
-  lg: 'px-3 py-1.5 text-sm',
+  xs: 'px-2 py-0.5 text-xs',
+  sm: 'px-2.5 py-1 text-xs',
+  md: 'px-3 py-1 text-sm',
+  lg: 'px-3.5 py-1.5 text-sm',
 };
 
 const Badge = ({
@@ -25,6 +25,16 @@ const Badge = ({
   className = '',
   ...props
 }) => {
+  const dotColors = {
+    default: 'bg-gray-500',
+    primary: 'bg-indigo-500',
+    success: 'bg-emerald-500',
+    warning: 'bg-amber-500',
+    danger: 'bg-red-500',
+    info: 'bg-blue-500',
+    purple: 'bg-purple-500',
+  };
+
   return (
     <span
       className={`
@@ -36,24 +46,14 @@ const Badge = ({
       {...props}
     >
       {dot && (
-        <span
-          className={`
-            w-1.5 h-1.5 rounded-full mr-1.5
-            ${variant === 'success' ? 'bg-green-500' : ''}
-            ${variant === 'warning' ? 'bg-yellow-500' : ''}
-            ${variant === 'danger' ? 'bg-red-500' : ''}
-            ${variant === 'info' ? 'bg-blue-500' : ''}
-            ${variant === 'primary' ? 'bg-red-500' : ''}
-            ${variant === 'default' ? 'bg-gray-500' : ''}
-          `}
-        />
+        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${dotColors[variant]}`} />
       )}
       {children}
       {removable && (
         <button
           type="button"
           onClick={onRemove}
-          className="ml-1.5 hover:bg-black/10 rounded-full p-0.5 transition-colors"
+          className="ml-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full p-0.5 transition-colors"
         >
           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
             <path

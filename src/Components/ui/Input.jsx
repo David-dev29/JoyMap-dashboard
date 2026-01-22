@@ -38,7 +38,7 @@ const Input = forwardRef(({
             placeholder-gray-400 dark:placeholder-gray-500
             ${error
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-              : 'border-gray-300 dark:border-gray-600 focus:border-red-500 focus:ring-red-500'
+              : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 focus:ring-indigo-500'
             }
             focus:outline-none focus:ring-2 focus:ring-opacity-50
             disabled:bg-gray-100 disabled:cursor-not-allowed dark:disabled:bg-gray-700

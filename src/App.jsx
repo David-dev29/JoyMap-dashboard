@@ -12,6 +12,10 @@ import Unauthorized from './Pages/Auth/Unauthorized';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
+import AdminBusinesses from './pages/admin/Businesses';
+import AdminUsers from './pages/admin/Users';
+import AdminCategories from './pages/admin/Categories';
+import AdminSettings from './pages/admin/Settings';
 
 // Business Pages
 import BusinessDashboard from './pages/business/Dashboard';
@@ -77,11 +81,15 @@ const router = createBrowserRouter([
       },
       {
         path: 'admin/businesses',
-        element: <BusinessesManager />,
+        element: <AdminBusinesses />,
       },
       {
         path: 'admin/users',
-        element: <div className="p-4 text-gray-500">Pagina de usuarios (proximamente)</div>,
+        element: <AdminUsers />,
+      },
+      {
+        path: 'admin/categories',
+        element: <AdminCategories />,
       },
       {
         path: 'admin/chatbot',
@@ -101,7 +109,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'admin/settings',
-        element: <div className="p-4 text-gray-500">Configuracion de plataforma (proximamente)</div>,
+        element: <AdminSettings />,
       },
       {
         path: 'admin/reports',

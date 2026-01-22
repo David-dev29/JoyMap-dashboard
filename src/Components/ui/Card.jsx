@@ -8,19 +8,18 @@ const Card = ({
 }) => {
   const paddings = {
     none: '',
-    sm: 'p-3',
-    md: 'p-4',
-    lg: 'p-6',
+    sm: 'p-4',
+    md: 'p-6',
+    lg: 'p-8',
   };
 
   return (
     <div
       className={`
-        bg-white dark:bg-gray-800
-        rounded-xl
-        border border-gray-200 dark:border-gray-700
-        shadow-sm
-        ${hover ? 'hover:shadow-md transition-shadow cursor-pointer' : ''}
+        bg-white dark:bg-slate-800
+        rounded-2xl
+        transition-all duration-200
+        ${hover ? 'hover:shadow-lg cursor-pointer' : ''}
         ${paddings[padding]}
         ${className}
       `}
@@ -32,9 +31,10 @@ const Card = ({
   );
 };
 
-const CardHeader = ({ children, className = '' }) => (
-  <div className={`pb-4 border-b border-gray-200 dark:border-gray-700 ${className}`}>
-    {children}
+const CardHeader = ({ children, className = '', action }) => (
+  <div className={`flex items-start justify-between mb-6 ${className}`}>
+    <div>{children}</div>
+    {action && <div>{action}</div>}
   </div>
 );
 
@@ -51,13 +51,13 @@ const CardDescription = ({ children, className = '' }) => (
 );
 
 const CardContent = ({ children, className = '' }) => (
-  <div className={`py-4 ${className}`}>
+  <div className={className}>
     {children}
   </div>
 );
 
 const CardFooter = ({ children, className = '' }) => (
-  <div className={`pt-4 border-t border-gray-200 dark:border-gray-700 ${className}`}>
+  <div className={`mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 ${className}`}>
     {children}
   </div>
 );
