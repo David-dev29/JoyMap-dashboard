@@ -1,103 +1,201 @@
 // App.jsx
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './Components/ProtectedRoute';
-import DashboardLayout from './Layouts/DashboardLayout';
+
+// Layouts
+import { MainLayout } from './components/layout';
 
 // Auth Pages
 import Login from './Pages/Auth/Login';
 import Unauthorized from './Pages/Auth/Unauthorized';
 
-// Dashboard Pages
-import OrderAcceptance from './Pages/Menu/OrderConfiguration';
-import Profile from './Pages/Menu/Profile';
-import WelcomePage from './Pages/Menu/Welcome';
+// Admin Pages
+import AdminDashboard from './pages/admin/Dashboard';
+
+// Business Pages
+import BusinessDashboard from './pages/business/Dashboard';
+
+// Shared Pages
+import NotFound from './pages/shared/NotFound';
+
+// Legacy Pages (will be migrated later)
 import Panel from './Pages/Panel';
 import OrdersDashboard from './Pages/OrdersPDV/OrdersDashboard';
 import KitchenMain from './Pages/Kitchen/MainKitchen';
 import InventoryPage from './Pages/Inventory/Inventory';
 import ClientsPage from './Pages/Customers/Customers';
 import DiscountCodesPage from './Pages/Marketing/Discounts';
-import SalesPage from './Pages/Sales/OrderHistory.jsx';
-import FinancialRecords from './Pages/Sales/FinalcialRecords.jsx';
-import CashCount from './Pages/Sales/CashCount.jsx';
-import WhatsAppChatbotRecovery from './Pages/ChatBot/WhatsAppChatbotRecovery.jsx';
-import BusinessesManager from './Pages/Businesses/BusinessesManager.jsx';
+import SalesPage from './Pages/Sales/OrderHistory';
+import FinancialRecords from './Pages/Sales/FinalcialRecords';
+import CashCount from './Pages/Sales/Cashcount';
+import WhatsAppChatbotRecovery from './Pages/ChatBot/WhatsAppChatbotRecovery';
+import BusinessesManager from './Pages/Businesses/BusinessesManager';
+
+// Role-based redirect component
+const RoleBasedRedirect = () => {
+  const { user } = useAuth();
+
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
+  return <BusinessDashboard />;
+};
 
 const router = createBrowserRouter([
-  // Rutas publicas
+  // Public routes
   {
-    path: "/login",
+    path: '/login',
     element: <Login />,
   },
   {
-    path: "/unauthorized",
+    path: '/unauthorized',
     element: <Unauthorized />,
   },
-  // Rutas protegidas
+
+  // Protected routes
   {
-    path: "/",
+    path: '/',
     element: (
       <ProtectedRoute>
-        <DashboardLayout />
+        <MainLayout />
       </ProtectedRoute>
     ),
     children: [
+      // Root - redirect based on role
       {
         index: true,
-        element: <Panel />,
+        element: <RoleBasedRedirect />,
+      },
+
+      // ============================================
+      // ADMIN ROUTES
+      // ============================================
+      {
+        path: 'admin',
+        element: <AdminDashboard />,
       },
       {
-        path: "panel",
-        element: <Panel />,
-      },
-      {
-        path: "businesses",
+        path: 'admin/businesses',
         element: <BusinessesManager />,
       },
       {
-        path: "welcomePage",
-        element: <WelcomePage />,
+        path: 'admin/users',
+        element: <div className="p-4 text-gray-500">Pagina de usuarios (proximamente)</div>,
       },
       {
-        path: "orderConfiguration",
-        element: <OrderAcceptance />,
+        path: 'admin/chatbot',
+        element: <WhatsAppChatbotRecovery />,
       },
       {
-        path: "ordersDashboard",
-        element: <OrdersDashboard />,
-      },
-      {
-        path: "kitchenMain",
-        element: <KitchenMain />,
-      },
-      {
-        path: "inventory",
-        element: <InventoryPage />,
-      },
-      {
-        path: "clients",
+        path: 'admin/customers',
         element: <ClientsPage />,
       },
       {
-        path: "discounts",
+        path: 'admin/marketing/discounts',
         element: <DiscountCodesPage />,
       },
       {
-        path: "Orderhistory",
+        path: 'admin/marketing/reviews',
+        element: <div className="p-4 text-gray-500">Pagina de resenas (proximamente)</div>,
+      },
+      {
+        path: 'admin/settings',
+        element: <div className="p-4 text-gray-500">Configuracion de plataforma (proximamente)</div>,
+      },
+      {
+        path: 'admin/reports',
+        element: <div className="p-4 text-gray-500">Reportes globales (proximamente)</div>,
+      },
+
+      // ============================================
+      // BUSINESS ROUTES
+      // ============================================
+      {
+        path: 'products',
+        element: <Panel />,
+      },
+      {
+        path: 'orders',
+        element: <OrdersDashboard />,
+      },
+      {
+        path: 'kitchen',
+        element: <KitchenMain />,
+      },
+      {
+        path: 'inventory',
+        element: <InventoryPage />,
+      },
+      {
+        path: 'sales/history',
         element: <SalesPage />,
       },
       {
-        path: "Financialrecords",
+        path: 'sales/reports',
         element: <FinancialRecords />,
       },
       {
-        path: "cashCount",
+        path: 'sales/cash-count',
         element: <CashCount />,
       },
       {
-        path: "chatbot",
+        path: 'my-business',
+        element: <div className="p-4 text-gray-500">Mi negocio (proximamente)</div>,
+      },
+      {
+        path: 'settings',
+        element: <div className="p-4 text-gray-500">Configuracion (proximamente)</div>,
+      },
+
+      // ============================================
+      // LEGACY ROUTES (for backwards compatibility)
+      // ============================================
+      {
+        path: 'panel',
+        element: <Panel />,
+      },
+      {
+        path: 'businesses',
+        element: <BusinessesManager />,
+      },
+      {
+        path: 'ordersDashboard',
+        element: <OrdersDashboard />,
+      },
+      {
+        path: 'kitchenMain',
+        element: <KitchenMain />,
+      },
+      {
+        path: 'clients',
+        element: <ClientsPage />,
+      },
+      {
+        path: 'discounts',
+        element: <DiscountCodesPage />,
+      },
+      {
+        path: 'Orderhistory',
+        element: <SalesPage />,
+      },
+      {
+        path: 'Financialrecords',
+        element: <FinancialRecords />,
+      },
+      {
+        path: 'cashCount',
+        element: <CashCount />,
+      },
+      {
+        path: 'chatbot',
         element: <WhatsAppChatbotRecovery />,
+      },
+
+      // 404
+      {
+        path: '*',
+        element: <NotFound />,
       },
     ],
   },
