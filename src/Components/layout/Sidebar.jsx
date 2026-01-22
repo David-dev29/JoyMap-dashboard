@@ -19,6 +19,10 @@ import {
   Boxes,
   Sparkles,
   X,
+  Star,
+  Percent,
+  History,
+  UserCircle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Tooltip } from '../ui';
@@ -39,19 +43,17 @@ const Sidebar = ({ isOpen, onClose }) => {
         { icon: Building2, label: 'Negocios', path: '/admin/businesses' },
         { icon: Users, label: 'Usuarios', path: '/admin/users' },
         { icon: Tag, label: 'Categorias', path: '/admin/categories' },
+        { type: 'label', label: 'VENTAS' },
+        { icon: History, label: 'Historial', path: '/admin/sales/history' },
+        { icon: BarChart3, label: 'Reportes', path: '/admin/reports' },
+        { type: 'label', label: 'MARKETING' },
+        { icon: Percent, label: 'Descuentos', path: '/admin/marketing/discounts' },
+        { icon: Star, label: 'Resenas', path: '/admin/marketing/reviews' },
         { type: 'label', label: 'OPERACIONES' },
+        { icon: UserCircle, label: 'Clientes', path: '/admin/customers' },
         { icon: MessageSquare, label: 'ChatBot', path: '/admin/chatbot' },
-        {
-          icon: Tag,
-          label: 'Marketing',
-          children: [
-            { label: 'Descuentos', path: '/admin/marketing/discounts' },
-            { label: 'Resenas', path: '/admin/marketing/reviews' },
-          ],
-        },
         { type: 'label', label: 'CONFIGURACION' },
         { icon: Settings, label: 'Plataforma', path: '/admin/settings' },
-        { icon: BarChart3, label: 'Reportes', path: '/admin/reports' },
       ]
     : [
         { type: 'label', label: 'MENU' },

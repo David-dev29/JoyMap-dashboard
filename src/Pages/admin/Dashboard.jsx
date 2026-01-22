@@ -1,22 +1,98 @@
+import { useState, useEffect } from 'react';
 import {
   Building2,
   Users,
   ShoppingCart,
   DollarSign,
   TrendingUp,
-  Package,
   ArrowUpRight,
   MoreHorizontal,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
 } from 'lucide-react';
-import { Card, Badge } from '../../components/ui';
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts';
+import { Card, Badge, Avatar } from '../../components/ui';
 import { StatsCard } from '../../components/shared';
+import api from '../../config/api';
+
+// Mock data for charts
+const ordersChartData = [
+  { day: 'Lun', orders: 45, revenue: 2340 },
+  { day: 'Mar', orders: 52, revenue: 2780 },
+  { day: 'Mie', orders: 38, revenue: 1950 },
+  { day: 'Jue', orders: 65, revenue: 3420 },
+  { day: 'Vie', orders: 78, revenue: 4120 },
+  { day: 'Sab', orders: 92, revenue: 4890 },
+  { day: 'Dom', orders: 68, revenue: 3560 },
+];
+
+const topBusinesses = [
+  { id: 1, name: 'El Buen Sabor', orders: 156, revenue: 12450, growth: 15 },
+  { id: 2, name: 'Pizza Express', orders: 124, revenue: 8230, growth: 8 },
+  { id: 3, name: 'Sushi Master', orders: 98, revenue: 6890, growth: 12 },
+  { id: 4, name: 'Taqueria Don Jose', orders: 87, revenue: 5120, growth: 5 },
+  { id: 5, name: 'Cafe Central', orders: 76, revenue: 4560, growth: 3 },
+];
+
+const recentOrders = [
+  { id: '1001', business: 'El Buen Sabor', customer: 'Juan Perez', total: 185, status: 'delivered', time: '5 min' },
+  { id: '1002', business: 'Pizza Express', customer: 'Maria Garcia', total: 92, status: 'preparing', time: '12 min' },
+  { id: '1003', business: 'Sushi Master', customer: 'Carlos Lopez', total: 156, status: 'pending', time: '15 min' },
+  { id: '1004', business: 'Cafe Central', customer: 'Ana Martinez', total: 45, status: 'delivered', time: '25 min' },
+  { id: '1005', business: 'El Buen Sabor', customer: 'Pedro Sanchez', total: 210, status: 'cancelled', time: '30 min' },
+  { id: '1006', business: 'Pizza Express', customer: 'Laura Torres', total: 78, status: 'delivered', time: '35 min' },
+  { id: '1007', business: 'Taqueria Don Jose', customer: 'Diego Ruiz', total: 125, status: 'ready', time: '40 min' },
+  { id: '1008', business: 'Sushi Master', customer: 'Sofia Morales', total: 198, status: 'delivered', time: '45 min' },
+];
+
+const recentActivity = [
+  { type: 'new_business', message: 'Nuevo negocio registrado: Pizzeria Roma', time: '10 min' },
+  { type: 'new_user', message: 'Nuevo usuario: Carlos Rodriguez (business_owner)', time: '25 min' },
+  { type: 'order', message: 'Orden #1001 completada en El Buen Sabor', time: '30 min' },
+  { type: 'review', message: 'Nueva reseña 5★ para Pizza Express', time: '45 min' },
+  { type: 'alert', message: '3 productos agotados en Sushi Master', time: '1 hora' },
+];
+
+const statusConfig = {
+  pending: { label: 'Pendiente', color: 'warning', icon: Clock },
+  preparing: { label: 'Preparando', color: 'info', icon: Clock },
+  ready: { label: 'Listo', color: 'primary', icon: CheckCircle },
+  delivered: { label: 'Entregado', color: 'success', icon: CheckCircle },
+  cancelled: { label: 'Cancelado', color: 'danger', icon: XCircle },
+};
 
 const AdminDashboard = () => {
-  // TODO: Fetch real data from API
-  const stats = [
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalBusinesses: 24,
+    totalUsers: 156,
+    ordersToday: 342,
+    revenueToday: 18450,
+  });
+
+  useEffect(() => {
+    // Simulate loading
+    const timer = setTimeout(() => setLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const statsCards = [
     {
       title: 'Negocios Activos',
-      value: '24',
+      value: stats.totalBusinesses,
       change: '+12%',
       changeType: 'positive',
       icon: <Building2 size={22} />,
@@ -24,29 +100,45 @@ const AdminDashboard = () => {
     },
     {
       title: 'Usuarios Totales',
-      value: '156',
+      value: stats.totalUsers,
       change: '+8%',
       changeType: 'positive',
       icon: <Users size={22} />,
       iconVariant: 'success',
     },
     {
-      title: 'Pedidos Hoy',
-      value: '342',
+      title: 'Ordenes Hoy',
+      value: stats.ordersToday,
       change: '+18%',
       changeType: 'positive',
       icon: <ShoppingCart size={22} />,
       iconVariant: 'purple',
     },
     {
-      title: 'Ingresos del Mes',
-      value: '$45,230',
-      change: '+8%',
+      title: 'Ingresos Hoy',
+      value: `$${stats.revenueToday.toLocaleString()}`,
+      change: '+15%',
       changeType: 'positive',
       icon: <DollarSign size={22} />,
       iconVariant: 'warning',
     },
   ];
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white dark:bg-slate-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700">
+          <p className="font-medium text-gray-900 dark:text-white mb-1">{label}</p>
+          {payload.map((entry, index) => (
+            <p key={index} className="text-sm" style={{ color: entry.color }}>
+              {entry.name}: {entry.name === 'revenue' ? `$${entry.value.toLocaleString()}` : entry.value}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="space-y-6">
@@ -62,53 +154,101 @@ const AdminDashboard = () => {
         </div>
         <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm shadow-indigo-500/25">
           <ArrowUpRight size={18} />
-          Ver reportes
+          Ver reportes completos
         </button>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, index) => (
-          <StatsCard key={index} {...stat} />
+        {statsCards.map((stat, index) => (
+          <StatsCard key={index} {...stat} loading={loading} />
         ))}
       </div>
 
-      {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Activity */}
-        <Card className="lg:col-span-2">
-          <Card.Header
-            action={
-              <button className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
-                <MoreHorizontal size={18} className="text-gray-400" />
-              </button>
-            }
-          >
-            <Card.Title>Actividad Reciente</Card.Title>
-            <Card.Description>Ultimos movimientos en la plataforma</Card.Description>
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Orders Chart */}
+        <Card>
+          <Card.Header>
+            <Card.Title>Ordenes - Ultimos 7 dias</Card.Title>
+            <Card.Description>Cantidad de ordenes por dia</Card.Description>
           </Card.Header>
           <Card.Content>
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                  <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
-                    <ShoppingCart size={18} className="text-indigo-600 dark:text-indigo-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      Nuevo pedido #{1000 + i}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Restaurante El Buen Sabor - Hace {i * 5} min
-                    </p>
-                  </div>
-                  <Badge variant="success" size="sm">Completado</Badge>
-                </div>
-              ))}
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={ordersChartData}>
+                  <defs>
+                    <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                  <XAxis
+                    dataKey="day"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#6B7280', fontSize: 12 }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#6B7280', fontSize: 12 }}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="orders"
+                    name="Ordenes"
+                    stroke="#4F46E5"
+                    strokeWidth={2}
+                    fill="url(#colorOrders)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </Card.Content>
         </Card>
 
+        {/* Revenue Chart */}
+        <Card>
+          <Card.Header>
+            <Card.Title>Ingresos - Ultimos 7 dias</Card.Title>
+            <Card.Description>Ingresos totales por dia</Card.Description>
+          </Card.Header>
+          <Card.Content>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={ordersChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                  <XAxis
+                    dataKey="day"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#6B7280', fontSize: 12 }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#6B7280', fontSize: 12 }}
+                    tickFormatter={(value) => `$${value}`}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar
+                    dataKey="revenue"
+                    name="Ingresos"
+                    fill="#10B981"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card.Content>
+        </Card>
+      </div>
+
+      {/* Bottom Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Top Businesses */}
         <Card>
           <Card.Header
@@ -118,44 +258,137 @@ const AdminDashboard = () => {
               </button>
             }
           >
-            <Card.Title>Top Negocios</Card.Title>
-            <Card.Description>Por ventas este mes</Card.Description>
+            <Card.Title>Top 5 Negocios</Card.Title>
+            <Card.Description>Por ventas esta semana</Card.Description>
           </Card.Header>
           <Card.Content>
             <div className="space-y-4">
-              {[
-                { name: 'El Buen Sabor', sales: '$12,450', growth: '+15%' },
-                { name: 'Pizza Express', sales: '$8,230', growth: '+8%' },
-                { name: 'Sushi Master', sales: '$6,890', growth: '+12%' },
-                { name: 'Taqueria Don Jose', sales: '$5,120', growth: '+5%' },
-                { name: 'Cafe Central', sales: '$4,560', growth: '+3%' },
-              ].map((business, i) => (
-                <div key={i} className="flex items-center justify-between p-2 -mx-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
+              {topBusinesses.map((business, i) => (
+                <div
+                  key={business.id}
+                  className="flex items-center justify-between p-2 -mx-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+                >
                   <div className="flex items-center gap-3">
-                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold
-                      ${i === 0 ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : ''}
-                      ${i === 1 ? 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300' : ''}
-                      ${i === 2 ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' : ''}
-                      ${i > 2 ? 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-400' : ''}
-                    `}>
+                    <span
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold
+                        ${i === 0 ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : ''}
+                        ${i === 1 ? 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300' : ''}
+                        ${i === 2 ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' : ''}
+                        ${i > 2 ? 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-400' : ''}
+                      `}
+                    >
                       {i + 1}
                     </span>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {business.name}
-                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {business.name}
+                      </p>
+                      <p className="text-xs text-gray-500">{business.orders} ordenes</p>
+                    </div>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                      {business.sales}
+                      ${business.revenue.toLocaleString()}
                     </p>
-                    <p className="text-xs text-emerald-500 font-medium">{business.growth}</p>
+                    <p className="text-xs text-emerald-500 font-medium">+{business.growth}%</p>
                   </div>
                 </div>
               ))}
             </div>
           </Card.Content>
         </Card>
+
+        {/* Recent Orders */}
+        <Card className="lg:col-span-2">
+          <Card.Header
+            action={
+              <Badge variant="primary">{recentOrders.length} ordenes</Badge>
+            }
+          >
+            <Card.Title>Ordenes Recientes</Card.Title>
+            <Card.Description>Ultimas ordenes de todos los negocios</Card.Description>
+          </Card.Header>
+          <Card.Content>
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+              {recentOrders.map((order) => {
+                const status = statusConfig[order.status];
+                const StatusIcon = status.icon;
+                return (
+                  <div
+                    key={order.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+                        <ShoppingCart size={18} className="text-indigo-600 dark:text-indigo-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          #{order.id} - {order.business}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {order.customer} · Hace {order.time}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        ${order.total}
+                      </span>
+                      <Badge variant={status.color} size="sm">
+                        <span className="flex items-center gap-1">
+                          <StatusIcon size={12} />
+                          {status.label}
+                        </span>
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card.Content>
+        </Card>
       </div>
+
+      {/* Activity Feed */}
+      <Card>
+        <Card.Header>
+          <Card.Title>Actividad Reciente</Card.Title>
+          <Card.Description>Ultimos movimientos en la plataforma</Card.Description>
+        </Card.Header>
+        <Card.Content>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {recentActivity.map((activity, index) => (
+              <div
+                key={index}
+                className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl"
+              >
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
+                    ${activity.type === 'new_business' ? 'bg-blue-100 dark:bg-blue-900/30' : ''}
+                    ${activity.type === 'new_user' ? 'bg-green-100 dark:bg-green-900/30' : ''}
+                    ${activity.type === 'order' ? 'bg-purple-100 dark:bg-purple-900/30' : ''}
+                    ${activity.type === 'review' ? 'bg-amber-100 dark:bg-amber-900/30' : ''}
+                    ${activity.type === 'alert' ? 'bg-red-100 dark:bg-red-900/30' : ''}
+                  `}
+                >
+                  {activity.type === 'new_business' && <Building2 size={16} className="text-blue-600 dark:text-blue-400" />}
+                  {activity.type === 'new_user' && <Users size={16} className="text-green-600 dark:text-green-400" />}
+                  {activity.type === 'order' && <ShoppingCart size={16} className="text-purple-600 dark:text-purple-400" />}
+                  {activity.type === 'review' && <TrendingUp size={16} className="text-amber-600 dark:text-amber-400" />}
+                  {activity.type === 'alert' && <AlertCircle size={16} className="text-red-600 dark:text-red-400" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-900 dark:text-white line-clamp-2">
+                    {activity.message}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Hace {activity.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card.Content>
+      </Card>
     </div>
   );
 };

@@ -16,6 +16,11 @@ import AdminBusinesses from './pages/admin/Businesses';
 import AdminUsers from './pages/admin/Users';
 import AdminCategories from './pages/admin/Categories';
 import AdminSettings from './pages/admin/Settings';
+import AdminReports from './pages/admin/Reports';
+import AdminCustomers from './pages/admin/Customers';
+import AdminDiscounts from './pages/admin/Discounts';
+import AdminReviews from './pages/admin/Reviews';
+import AdminSalesHistory from './pages/admin/SalesHistory';
 
 // Business Pages
 import BusinessDashboard from './pages/business/Dashboard';
@@ -97,15 +102,15 @@ const router = createBrowserRouter([
       },
       {
         path: 'admin/customers',
-        element: <ClientsPage />,
+        element: <AdminCustomers />,
       },
       {
         path: 'admin/marketing/discounts',
-        element: <DiscountCodesPage />,
+        element: <AdminDiscounts />,
       },
       {
         path: 'admin/marketing/reviews',
-        element: <div className="p-4 text-gray-500">Pagina de resenas (proximamente)</div>,
+        element: <AdminReviews />,
       },
       {
         path: 'admin/settings',
@@ -113,7 +118,11 @@ const router = createBrowserRouter([
       },
       {
         path: 'admin/reports',
-        element: <div className="p-4 text-gray-500">Reportes globales (proximamente)</div>,
+        element: <AdminReports />,
+      },
+      {
+        path: 'admin/sales/history',
+        element: <AdminSalesHistory />,
       },
 
       // ============================================
