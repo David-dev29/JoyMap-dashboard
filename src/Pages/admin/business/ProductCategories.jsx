@@ -223,7 +223,7 @@ const ProductCategories = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-hidden max-w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -244,7 +244,8 @@ const ProductCategories = () => {
       </div>
 
       {/* Categories Table */}
-      <Card padding="none">
+      <Card padding="none" className="overflow-hidden">
+        <div className="overflow-x-auto">
         <Table>
           <Table.Head>
             <Table.Row hover={false}>
@@ -306,19 +307,18 @@ const ProductCategories = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        leftIcon={<Edit2 size={16} />}
                         onClick={() => openEditModal(category)}
+                        className="p-2"
                       >
-                        Editar
+                        <Edit2 size={16} />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        leftIcon={<Trash2 size={16} />}
                         onClick={() => confirmDelete(category)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                       >
-                        Eliminar
+                        <Trash2 size={16} />
                       </Button>
                     </div>
                   </Table.Cell>
@@ -327,6 +327,7 @@ const ProductCategories = () => {
             )}
           </Table.Body>
         </Table>
+        </div>
       </Card>
 
       {/* Summary */}

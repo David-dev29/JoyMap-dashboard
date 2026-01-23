@@ -178,7 +178,7 @@ const BusinessOrders = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-hidden max-w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -246,7 +246,8 @@ const BusinessOrders = () => {
       </Card>
 
       {/* Orders Table */}
-      <Card padding="none">
+      <Card padding="none" className="overflow-hidden">
+        <div className="overflow-x-auto">
         <Table>
           <Table.Head>
             <Table.Row hover={false}>
@@ -318,10 +319,10 @@ const BusinessOrders = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        leftIcon={<Eye size={16} />}
                         onClick={() => openDetailModal(order)}
+                        className="p-2"
                       >
-                        Ver
+                        <Eye size={16} />
                       </Button>
                     </Table.Cell>
                   </Table.Row>
@@ -330,6 +331,7 @@ const BusinessOrders = () => {
             )}
           </Table.Body>
         </Table>
+        </div>
       </Card>
 
       {/* Summary */}

@@ -226,7 +226,7 @@ const BusinessProfile = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-hidden max-w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -446,47 +446,49 @@ const BusinessProfile = () => {
           </Card>
 
           {/* Schedule */}
-          <Card>
+          <Card className="overflow-hidden">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <Clock size={18} />
               Horarios de Operacion
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {DAYS_OF_WEEK.map(({ key, label }) => (
                 <div
                   key={key}
-                  className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${
+                  className={`p-3 rounded-xl transition-colors ${
                     schedule[key]?.isOpen
                       ? 'bg-emerald-50 dark:bg-emerald-900/20'
                       : 'bg-gray-50 dark:bg-slate-700/50'
                   }`}
                 >
-                  <Toggle
-                    checked={schedule[key]?.isOpen}
-                    onChange={(checked) => handleScheduleChange(key, 'isOpen', checked)}
-                    size="sm"
-                  />
-                  <span className={`w-20 text-sm font-medium ${
-                    schedule[key]?.isOpen
-                      ? 'text-gray-900 dark:text-white'
-                      : 'text-gray-400 dark:text-gray-500'
-                  }`}>
-                    {label}
-                  </span>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Toggle
+                      checked={schedule[key]?.isOpen}
+                      onChange={(checked) => handleScheduleChange(key, 'isOpen', checked)}
+                      size="sm"
+                    />
+                    <span className={`text-sm font-medium flex-1 ${
+                      schedule[key]?.isOpen
+                        ? 'text-gray-900 dark:text-white'
+                        : 'text-gray-400 dark:text-gray-500'
+                    }`}>
+                      {label}
+                    </span>
+                  </div>
                   {schedule[key]?.isOpen && (
-                    <div className="flex items-center gap-2 ml-auto">
+                    <div className="flex items-center gap-2 pl-8">
                       <input
                         type="time"
                         value={schedule[key]?.open || '09:00'}
                         onChange={(e) => handleScheduleChange(key, 'open', e.target.value)}
-                        className="px-2 py-1 text-sm bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg"
+                        className="flex-1 min-w-0 px-2 py-1.5 text-sm bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg"
                       />
-                      <span className="text-gray-400">-</span>
+                      <span className="text-gray-400 text-sm">a</span>
                       <input
                         type="time"
                         value={schedule[key]?.close || '21:00'}
                         onChange={(e) => handleScheduleChange(key, 'close', e.target.value)}
-                        className="px-2 py-1 text-sm bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg"
+                        className="flex-1 min-w-0 px-2 py-1.5 text-sm bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg"
                       />
                     </div>
                   )}
