@@ -94,10 +94,27 @@ const Businesses = () => {
     setLoading(true);
     try {
       const response = await authFetch(ENDPOINTS.businesses.all);
+      console.log('=== DEBUG Businesses ===');
+      console.log('Endpoint:', ENDPOINTS.businesses.all);
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       const data = await response.json();
+      console.log('API Response (raw):', data);
+      console.log('Type of data:', typeof data);
+      console.log('Is Array:', Array.isArray(data));
+      console.log('data.businesses:', data.businesses);
+      console.log('data.response:', data.response);
+      console.log('data.data:', data.data);
+      console.log('data.success:', data.success);
+      if (data && typeof data === 'object') {
+        console.log('Object.keys(data):', Object.keys(data));
+      }
 
       if (data.success !== false) {
-        const businessList = data.businesses || data.data || data || [];
+        const businessList = data.businesses || data.response || data.data || (Array.isArray(data) ? data : []);
+        console.log('Final businessList:', businessList);
+        console.log('businessList length:', businessList.length);
         setBusinesses(Array.isArray(businessList) ? businessList : []);
       } else {
         throw new Error(data.message || 'Error al cargar negocios');
@@ -113,8 +130,14 @@ const Businesses = () => {
   const fetchBusinessCategories = async () => {
     try {
       const response = await authFetch(ENDPOINTS.businessCategories.base);
+      console.log('=== DEBUG Business Categories ===');
+      console.log('Endpoint:', ENDPOINTS.businessCategories.base);
+
       const data = await response.json();
-      const categories = data.categories || data.data || data || [];
+      console.log('Categories API Response:', data);
+
+      const categories = data.categories || data.response || data.data || (Array.isArray(data) ? data : []);
+      console.log('Final categories:', categories);
       setBusinessCategories(Array.isArray(categories) ? categories : []);
     } catch (error) {
       console.error('Error fetching business categories:', error);
@@ -124,10 +147,16 @@ const Businesses = () => {
   const fetchAvailableOwners = async () => {
     try {
       const response = await authFetch(`${ENDPOINTS.users.base}?role=business_owner`);
+      console.log('=== DEBUG Available Owners ===');
+
       const data = await response.json();
-      const users = data.users || data.data || data || [];
+      console.log('Owners API Response:', data);
+
+      const users = data.users || data.response || data.data || (Array.isArray(data) ? data : []);
+      console.log('Users extracted:', users);
       // Filter users that don't have a business assigned
       const available = users.filter(u => !u.businessId && !u.business);
+      console.log('Available owners:', available);
       setAvailableOwners(Array.isArray(available) ? available : []);
     } catch (error) {
       console.error('Error fetching available owners:', error);

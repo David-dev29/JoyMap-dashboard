@@ -88,13 +88,25 @@ const Users = () => {
     setLoading(true);
     try {
       const response = await authFetch(ENDPOINTS.users.base);
+      console.log('=== DEBUG Users ===');
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       const data = await response.json();
+      console.log('API Response (raw):', data);
+      console.log('Type of data:', typeof data);
+      console.log('Is Array:', Array.isArray(data));
+      console.log('data.users:', data.users);
+      console.log('data.response:', data.response);
+      console.log('data.data:', data.data);
+      console.log('Object.keys(data):', Object.keys(data));
 
       if (!response.ok) {
         throw new Error(data.message || 'Error al cargar usuarios');
       }
 
-      const usersData = data.users || data.data || data || [];
+      const usersData = data.users || data.response || data.data || (Array.isArray(data) ? data : []);
+      console.log('Final usersData:', usersData);
       setUsers(usersData);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -109,12 +121,15 @@ const Users = () => {
     try {
       const response = await authFetch(ENDPOINTS.businesses.all);
       const data = await response.json();
+      console.log('=== DEBUG Businesses (Users page) ===');
+      console.log('Businesses API Response:', data);
 
       if (!response.ok) {
         throw new Error(data.message || 'Error al cargar negocios');
       }
 
-      const businessesData = data.businesses || data.data || data || [];
+      const businessesData = data.businesses || data.response || data.data || (Array.isArray(data) ? data : []);
+      console.log('Final businessesData:', businessesData);
       setBusinesses(businessesData);
     } catch (error) {
       console.error('Error fetching businesses:', error);
