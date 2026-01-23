@@ -15,6 +15,8 @@ import {
   Check,
   X,
   AlertCircle,
+  MapPin,
+  Navigation,
 } from 'lucide-react';
 import { Card, Button, Input, Select, Badge, Table, Modal, Avatar, Dropdown } from '../../components/ui';
 import { authFetch, ENDPOINTS } from '../../config/api';
@@ -72,7 +74,10 @@ const Businesses = () => {
     address: '',
     phone: '',
     email: '',
+    latitude: '',
+    longitude: '',
   });
+  const [gettingLocation, setGettingLocation] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -187,6 +192,38 @@ const Businesses = () => {
     return business.status || 'active';
   };
 
+  // Get current location using Geolocation API
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      showToast('Geolocalizacion no soportada en este navegador', 'error');
+      return;
+    }
+
+    setGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setFormData(prev => ({
+          ...prev,
+          latitude: position.coords.latitude.toFixed(6),
+          longitude: position.coords.longitude.toFixed(6),
+        }));
+        setGettingLocation(false);
+        showToast('Ubicacion obtenida correctamente');
+      },
+      (error) => {
+        setGettingLocation(false);
+        let message = 'Error al obtener ubicacion';
+        if (error.code === error.PERMISSION_DENIED) {
+          message = 'Permiso de ubicacion denegado';
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          message = 'Ubicacion no disponible';
+        }
+        showToast(message, 'error');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   // Handlers
   const handleCreateBusiness = async () => {
     setFormErrors({});
@@ -194,6 +231,8 @@ const Businesses = () => {
     const errors = {};
     if (!formData.name.trim()) errors.name = 'El nombre es requerido';
     if (!formData.category) errors.category = 'La categoria es requerida';
+    if (!formData.address.trim()) errors.address = 'La direccion es requerida';
+    if (!formData.latitude || !formData.longitude) errors.coordinates = 'Las coordenadas son requeridas';
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -202,12 +241,16 @@ const Businesses = () => {
 
     setSubmitting(true);
     try {
-      // Build request body - try 'category' as field name (common pattern)
+      // Build request body with coordinates object
       const requestBody = {
         name: formData.name,
         category: formData.category, // ObjectId of business category
         description: formData.description,
         address: formData.address,
+        coordinates: {
+          latitude: parseFloat(formData.latitude) || 0,
+          longitude: parseFloat(formData.longitude) || 0,
+        },
         phone: formData.phone,
         email: formData.email,
         isOpen: true, // Default to active
@@ -247,6 +290,7 @@ const Businesses = () => {
 
     const errors = {};
     if (!formData.name.trim()) errors.name = 'El nombre es requerido';
+    if (!formData.address.trim()) errors.address = 'La direccion es requerida';
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -260,6 +304,10 @@ const Businesses = () => {
         category: formData.category,
         description: formData.description,
         address: formData.address,
+        coordinates: {
+          latitude: parseFloat(formData.latitude) || 0,
+          longitude: parseFloat(formData.longitude) || 0,
+        },
         phone: formData.phone,
         email: formData.email,
       };
@@ -377,6 +425,8 @@ const Businesses = () => {
       address: '',
       phone: '',
       email: '',
+      latitude: '',
+      longitude: '',
     });
     setFormErrors({});
   };
@@ -390,6 +440,8 @@ const Businesses = () => {
       address: business.address || '',
       phone: business.phone || '',
       email: business.email || '',
+      latitude: business.coordinates?.latitude?.toString() || '',
+      longitude: business.coordinates?.longitude?.toString() || '',
     });
     setIsEditModalOpen(true);
   };
@@ -695,7 +747,46 @@ const Businesses = () => {
             placeholder="Direccion del negocio"
             value={formData.address}
             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            error={formErrors.address}
+            leftIcon={<MapPin size={18} />}
           />
+          {/* Coordinates */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Coordenadas
+              </label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                leftIcon={<Navigation size={16} />}
+                onClick={getCurrentLocation}
+                loading={gettingLocation}
+              >
+                Obtener mi ubicacion
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                placeholder="Latitud (ej: 20.9674)"
+                value={formData.latitude}
+                onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                type="number"
+                step="any"
+              />
+              <Input
+                placeholder="Longitud (ej: -89.6235)"
+                value={formData.longitude}
+                onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                type="number"
+                step="any"
+              />
+            </div>
+            {formErrors.coordinates && (
+              <p className="text-sm text-red-500">{formErrors.coordinates}</p>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Telefono"
@@ -761,7 +852,43 @@ const Businesses = () => {
             label="Direccion"
             value={formData.address}
             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            error={formErrors.address}
+            leftIcon={<MapPin size={18} />}
           />
+          {/* Coordinates */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Coordenadas
+              </label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                leftIcon={<Navigation size={16} />}
+                onClick={getCurrentLocation}
+                loading={gettingLocation}
+              >
+                Obtener mi ubicacion
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                placeholder="Latitud"
+                value={formData.latitude}
+                onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                type="number"
+                step="any"
+              />
+              <Input
+                placeholder="Longitud"
+                value={formData.longitude}
+                onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                type="number"
+                step="any"
+              />
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Telefono"
@@ -907,6 +1034,15 @@ const Businesses = () => {
                 <div className="col-span-2">
                   <label className="text-sm text-gray-500 dark:text-gray-400">Direccion</label>
                   <p className="mt-1 text-gray-900 dark:text-white">{selectedBusiness.address}</p>
+                </div>
+              )}
+              {selectedBusiness.coordinates && (selectedBusiness.coordinates.latitude || selectedBusiness.coordinates.longitude) && (
+                <div className="col-span-2">
+                  <label className="text-sm text-gray-500 dark:text-gray-400">Coordenadas</label>
+                  <p className="mt-1 text-gray-900 dark:text-white flex items-center gap-2">
+                    <MapPin size={16} className="text-gray-400" />
+                    {selectedBusiness.coordinates.latitude}, {selectedBusiness.coordinates.longitude}
+                  </p>
                 </div>
               )}
               {selectedBusiness.phone && (
