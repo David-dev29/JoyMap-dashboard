@@ -23,15 +23,20 @@ import AdminReviews from './pages/admin/Reviews';
 import AdminSalesHistory from './pages/admin/SalesHistory';
 
 // Admin Business Management Pages
-import BusinessProfile from './pages/admin/business/BusinessProfile';
-import BusinessProducts from './pages/admin/business/BusinessProducts';
-import ProductCategories from './pages/admin/business/ProductCategories';
-import BusinessOrders from './pages/admin/business/BusinessOrders';
+import AdminBusinessProfile from './pages/admin/business/BusinessProfile';
+import AdminBusinessProducts from './pages/admin/business/BusinessProducts';
+import AdminProductCategories from './pages/admin/business/ProductCategories';
+import AdminBusinessOrders from './pages/admin/business/BusinessOrders';
 
 // Business Pages
 import BusinessDashboard from './pages/business/Dashboard';
 import MyBusiness from './pages/business/MyBusiness';
 import BusinessSettings from './pages/business/Settings';
+import BusinessProducts from './pages/business/Products';
+import BusinessProductCategories from './pages/business/ProductCategories';
+import BusinessOrders from './pages/business/Orders';
+import BusinessInventory from './pages/business/Inventory';
+import BusinessSales from './pages/business/Sales';
 
 // Shared Pages
 import NotFound from './pages/shared/NotFound';
@@ -138,59 +143,68 @@ const router = createBrowserRouter([
       // ============================================
       {
         path: 'admin/business/profile',
-        element: <BusinessProfile />,
+        element: <AdminBusinessProfile />,
       },
       {
         path: 'admin/business/products',
-        element: <BusinessProducts />,
+        element: <AdminBusinessProducts />,
       },
       {
         path: 'admin/business/product-categories',
-        element: <ProductCategories />,
+        element: <AdminProductCategories />,
       },
       {
         path: 'admin/business/orders',
-        element: <BusinessOrders />,
+        element: <AdminBusinessOrders />,
       },
 
       // ============================================
-      // BUSINESS ROUTES
+      // BUSINESS OWNER ROUTES
       // ============================================
       {
+        path: 'my-business',
+        element: <MyBusiness />,
+      },
+      {
         path: 'products',
-        element: <Panel />,
+        element: <BusinessProducts />,
+      },
+      {
+        path: 'products/categories',
+        element: <BusinessProductCategories />,
       },
       {
         path: 'orders',
-        element: <OrdersDashboard />,
+        element: <BusinessOrders />,
+      },
+      {
+        path: 'inventory',
+        element: <BusinessInventory />,
       },
       {
         path: 'kitchen',
         element: <KitchenMain />,
       },
       {
-        path: 'inventory',
-        element: <InventoryPage />,
-      },
-      {
-        path: 'sales/history',
-        element: <SalesPage />,
-      },
-      {
-        path: 'sales/reports',
-        element: <FinancialRecords />,
-      },
-      {
-        path: 'sales/cash-count',
-        element: <CashCount />,
-      },
-      {
-        path: 'my-business',
-        element: <MyBusiness />,
+        path: 'sales',
+        element: <BusinessSales />,
       },
       {
         path: 'settings',
         element: <BusinessSettings />,
+      },
+      // Legacy sales routes (redirect to new sales page)
+      {
+        path: 'sales/history',
+        element: <BusinessSales />,
+      },
+      {
+        path: 'sales/reports',
+        element: <BusinessSales />,
+      },
+      {
+        path: 'sales/cash-count',
+        element: <CashCount />,
       },
 
       // ============================================
