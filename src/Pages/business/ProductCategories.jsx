@@ -151,19 +151,23 @@ const ProductCategories = () => {
       setSaving(true);
       setModalError('');
 
-      const formDataToSend = new FormData();
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('description', formData.description);
-      formDataToSend.append('order', formData.order);
-      formDataToSend.append('businessId', business._id);
+      // Build JSON body (not FormData - backend expects JSON)
+      const body = {
+        name: formData.name.trim(),
+        description: formData.description || '',
+        order: formData.order || 0,
+        businessId: business._id,
+      };
 
+      // If there's an icon file, convert to base64
       if (iconFile) {
-        formDataToSend.append('icon', iconFile);
+        body.icon = iconPreview; // iconPreview is already base64 from FileReader
       }
 
       console.log('=== DEBUG ProductCategories: Saving ===');
+      console.log('formData:', formData);
+      console.log('Request body:', JSON.stringify(body));
       console.log('Editing:', editingCategory ? editingCategory._id : 'new');
-      console.log('Business ID:', business._id);
 
       let response;
       if (editingCategory) {
@@ -172,7 +176,8 @@ const ProductCategories = () => {
         console.log('PUT URL:', url);
         response = await authFetch(url, {
           method: 'PUT',
-          body: formDataToSend,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
         });
       } else {
         // POST /api/product-categories/create
@@ -180,7 +185,8 @@ const ProductCategories = () => {
         console.log('POST URL:', url);
         response = await authFetch(url, {
           method: 'POST',
-          body: formDataToSend,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
         });
       }
 
