@@ -22,13 +22,12 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
-import { Card, Badge, Avatar } from '../../components/ui';
+import { Card, Badge } from '../../components/ui';
 import { StatsCard } from '../../components/shared';
-import api from '../../config/api';
+import { authFetch, ENDPOINTS } from '../../config/api';
 
-// Mock data for charts
+// Mock data for charts (TODO: Create stats endpoint in API)
 const ordersChartData = [
   { day: 'Lun', orders: 45, revenue: 2340 },
   { day: 'Mar', orders: 52, revenue: 2780 },
@@ -37,25 +36,6 @@ const ordersChartData = [
   { day: 'Vie', orders: 78, revenue: 4120 },
   { day: 'Sab', orders: 92, revenue: 4890 },
   { day: 'Dom', orders: 68, revenue: 3560 },
-];
-
-const topBusinesses = [
-  { id: 1, name: 'El Buen Sabor', orders: 156, revenue: 12450, growth: 15 },
-  { id: 2, name: 'Pizza Express', orders: 124, revenue: 8230, growth: 8 },
-  { id: 3, name: 'Sushi Master', orders: 98, revenue: 6890, growth: 12 },
-  { id: 4, name: 'Taqueria Don Jose', orders: 87, revenue: 5120, growth: 5 },
-  { id: 5, name: 'Cafe Central', orders: 76, revenue: 4560, growth: 3 },
-];
-
-const recentOrders = [
-  { id: '1001', business: 'El Buen Sabor', customer: 'Juan Perez', total: 185, status: 'delivered', time: '5 min' },
-  { id: '1002', business: 'Pizza Express', customer: 'Maria Garcia', total: 92, status: 'preparing', time: '12 min' },
-  { id: '1003', business: 'Sushi Master', customer: 'Carlos Lopez', total: 156, status: 'pending', time: '15 min' },
-  { id: '1004', business: 'Cafe Central', customer: 'Ana Martinez', total: 45, status: 'delivered', time: '25 min' },
-  { id: '1005', business: 'El Buen Sabor', customer: 'Pedro Sanchez', total: 210, status: 'cancelled', time: '30 min' },
-  { id: '1006', business: 'Pizza Express', customer: 'Laura Torres', total: 78, status: 'delivered', time: '35 min' },
-  { id: '1007', business: 'Taqueria Don Jose', customer: 'Diego Ruiz', total: 125, status: 'ready', time: '40 min' },
-  { id: '1008', business: 'Sushi Master', customer: 'Sofia Morales', total: 198, status: 'delivered', time: '45 min' },
 ];
 
 const recentActivity = [
@@ -68,8 +48,10 @@ const recentActivity = [
 
 const statusConfig = {
   pending: { label: 'Pendiente', color: 'warning', icon: Clock },
+  confirmed: { label: 'Confirmado', color: 'info', icon: Clock },
   preparing: { label: 'Preparando', color: 'info', icon: Clock },
   ready: { label: 'Listo', color: 'primary', icon: CheckCircle },
+  delivering: { label: 'En camino', color: 'primary', icon: Clock },
   delivered: { label: 'Entregado', color: 'success', icon: CheckCircle },
   cancelled: { label: 'Cancelado', color: 'danger', icon: XCircle },
 };
@@ -77,48 +59,159 @@ const statusConfig = {
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
-    totalBusinesses: 24,
-    totalUsers: 156,
-    ordersToday: 342,
-    revenueToday: 18450,
+    totalBusinesses: 0,
+    totalUsers: 0,
+    ordersToday: 0,
+    revenueToday: 0,
   });
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [topBusinesses, setTopBusinesses] = useState([]);
 
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(timer);
+    fetchDashboardData();
   }, []);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      // Fetch all data in parallel
+      const [businessesRes, usersRes, ordersRes] = await Promise.all([
+        authFetch(ENDPOINTS.businesses.all),
+        authFetch(ENDPOINTS.users.base),
+        authFetch(ENDPOINTS.orders.base),
+      ]);
+
+      const businessesData = await businessesRes.json();
+      const usersData = await usersRes.json();
+      const ordersData = await ordersRes.json();
+
+      console.log('=== DEBUG Dashboard ===');
+      console.log('Businesses:', businessesData);
+      console.log('Users:', usersData);
+      console.log('Orders:', ordersData);
+
+      // Extract data with flexible structure
+      const businesses = businessesData.businesses || businessesData.response || businessesData.data || (Array.isArray(businessesData) ? businessesData : []);
+      const users = usersData.users || usersData.response || usersData.data || (Array.isArray(usersData) ? usersData : []);
+      const orders = ordersData.orders || ordersData.response || ordersData.data || (Array.isArray(ordersData) ? ordersData : []);
+
+      // Calculate stats
+      const today = new Date().toISOString().split('T')[0];
+      const ordersToday = orders.filter(o => {
+        const orderDate = new Date(o.createdAt).toISOString().split('T')[0];
+        return orderDate === today;
+      });
+      const revenueToday = ordersToday.reduce((sum, o) => sum + (o.total || 0), 0);
+
+      setStats({
+        totalBusinesses: businesses.length,
+        totalUsers: users.length,
+        ordersToday: ordersToday.length,
+        revenueToday: revenueToday,
+      });
+
+      // Get recent orders (last 8)
+      const sortedOrders = [...orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setRecentOrders(sortedOrders.slice(0, 8).map(order => ({
+        id: order.orderNumber || order._id?.slice(-6),
+        business: order.business?.name || 'Negocio',
+        customer: order.customer?.name || 'Cliente',
+        total: order.total || 0,
+        status: order.status || 'pending',
+        time: getTimeAgo(order.createdAt),
+      })));
+
+      // Calculate top businesses by orders
+      const businessOrderCount = {};
+      const businessRevenue = {};
+      orders.forEach(order => {
+        const bizId = order.business?._id || order.businessId;
+        const bizName = order.business?.name || 'Desconocido';
+        if (bizId) {
+          if (!businessOrderCount[bizId]) {
+            businessOrderCount[bizId] = { name: bizName, orders: 0, revenue: 0 };
+          }
+          businessOrderCount[bizId].orders++;
+          businessOrderCount[bizId].revenue += order.total || 0;
+        }
+      });
+
+      const topBiz = Object.values(businessOrderCount)
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 5)
+        .map((biz, i) => ({
+          id: i + 1,
+          name: biz.name,
+          orders: biz.orders,
+          revenue: biz.revenue,
+          growth: Math.floor(Math.random() * 20) + 1, // TODO: Calculate real growth
+        }));
+
+      setTopBusinesses(topBiz.length > 0 ? topBiz : [
+        { id: 1, name: 'Sin datos suficientes', orders: 0, revenue: 0, growth: 0 },
+      ]);
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      // Set default values on error
+      setStats({
+        totalBusinesses: 0,
+        totalUsers: 0,
+        ordersToday: 0,
+        revenueToday: 0,
+      });
+      setRecentOrders([]);
+      setTopBusinesses([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getTimeAgo = (dateString) => {
+    if (!dateString) return '-';
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'ahora';
+    if (diffMins < 60) return `${diffMins} min`;
+    if (diffHours < 24) return `${diffHours}h`;
+    return `${diffDays}d`;
+  };
 
   const statsCards = [
     {
       title: 'Negocios Activos',
       value: stats.totalBusinesses,
-      change: '+12%',
-      changeType: 'positive',
+      change: '-',
+      changeType: 'neutral',
       icon: <Building2 size={22} />,
       iconVariant: 'primary',
     },
     {
       title: 'Usuarios Totales',
       value: stats.totalUsers,
-      change: '+8%',
-      changeType: 'positive',
+      change: '-',
+      changeType: 'neutral',
       icon: <Users size={22} />,
       iconVariant: 'success',
     },
     {
       title: 'Ordenes Hoy',
       value: stats.ordersToday,
-      change: '+18%',
-      changeType: 'positive',
+      change: '-',
+      changeType: 'neutral',
       icon: <ShoppingCart size={22} />,
       iconVariant: 'purple',
     },
     {
       title: 'Ingresos Hoy',
       value: `$${stats.revenueToday.toLocaleString()}`,
-      change: '+15%',
-      changeType: 'positive',
+      change: '-',
+      changeType: 'neutral',
       icon: <DollarSign size={22} />,
       iconVariant: 'warning',
     },
@@ -171,7 +264,7 @@ const AdminDashboard = () => {
         <Card>
           <Card.Header>
             <Card.Title>Ordenes - Ultimos 7 dias</Card.Title>
-            <Card.Description>Cantidad de ordenes por dia</Card.Description>
+            <Card.Description>Cantidad de ordenes por dia (datos de ejemplo)</Card.Description>
           </Card.Header>
           <Card.Content>
             <div className="h-72">
@@ -214,7 +307,7 @@ const AdminDashboard = () => {
         <Card>
           <Card.Header>
             <Card.Title>Ingresos - Ultimos 7 dias</Card.Title>
-            <Card.Description>Ingresos totales por dia</Card.Description>
+            <Card.Description>Ingresos totales por dia (datos de ejemplo)</Card.Description>
           </Card.Header>
           <Card.Content>
             <div className="h-72">
@@ -259,41 +352,59 @@ const AdminDashboard = () => {
             }
           >
             <Card.Title>Top 5 Negocios</Card.Title>
-            <Card.Description>Por ventas esta semana</Card.Description>
+            <Card.Description>Por ventas acumuladas</Card.Description>
           </Card.Header>
           <Card.Content>
             <div className="space-y-4">
-              {topBusinesses.map((business, i) => (
-                <div
-                  key={business.id}
-                  className="flex items-center justify-between p-2 -mx-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold
-                        ${i === 0 ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : ''}
-                        ${i === 1 ? 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300' : ''}
-                        ${i === 2 ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' : ''}
-                        ${i > 2 ? 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-400' : ''}
-                      `}
-                    >
-                      {i + 1}
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {business.name}
-                      </p>
-                      <p className="text-xs text-gray-500">{business.orders} ordenes</p>
+              {loading ? (
+                [...Array(5)].map((_, i) => (
+                  <div key={i} className="animate-pulse flex items-center justify-between p-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 bg-gray-200 dark:bg-slate-700 rounded-lg" />
+                      <div className="space-y-2">
+                        <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-24" />
+                        <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-16" />
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                      ${business.revenue.toLocaleString()}
-                    </p>
-                    <p className="text-xs text-emerald-500 font-medium">+{business.growth}%</p>
+                ))
+              ) : topBusinesses.length === 0 ? (
+                <p className="text-center text-gray-500 py-4">No hay datos disponibles</p>
+              ) : (
+                topBusinesses.map((business, i) => (
+                  <div
+                    key={business.id}
+                    className="flex items-center justify-between p-2 -mx-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold
+                          ${i === 0 ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : ''}
+                          ${i === 1 ? 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300' : ''}
+                          ${i === 2 ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' : ''}
+                          ${i > 2 ? 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-400' : ''}
+                        `}
+                      >
+                        {i + 1}
+                      </span>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {business.name}
+                        </p>
+                        <p className="text-xs text-gray-500">{business.orders} ordenes</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                        ${business.revenue.toLocaleString()}
+                      </p>
+                      {business.growth > 0 && (
+                        <p className="text-xs text-emerald-500 font-medium">+{business.growth}%</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </Card.Content>
         </Card>
@@ -310,41 +421,57 @@ const AdminDashboard = () => {
           </Card.Header>
           <Card.Content>
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-              {recentOrders.map((order) => {
-                const status = statusConfig[order.status];
-                const StatusIcon = status.icon;
-                return (
-                  <div
-                    key={order.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-                  >
+              {loading ? (
+                [...Array(5)].map((_, i) => (
+                  <div key={i} className="animate-pulse flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
-                        <ShoppingCart size={18} className="text-indigo-600 dark:text-indigo-400" />
+                      <div className="w-10 h-10 bg-gray-200 dark:bg-slate-600 rounded-xl" />
+                      <div className="space-y-2">
+                        <div className="h-4 bg-gray-200 dark:bg-slate-600 rounded w-32" />
+                        <div className="h-3 bg-gray-200 dark:bg-slate-600 rounded w-24" />
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          #{order.id} - {order.business}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {order.customer} · Hace {order.time}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                        ${order.total}
-                      </span>
-                      <Badge variant={status.color} size="sm">
-                        <span className="flex items-center gap-1">
-                          <StatusIcon size={12} />
-                          {status.label}
-                        </span>
-                      </Badge>
                     </div>
                   </div>
-                );
-              })}
+                ))
+              ) : recentOrders.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">No hay ordenes recientes</p>
+              ) : (
+                recentOrders.map((order) => {
+                  const status = statusConfig[order.status] || statusConfig.pending;
+                  const StatusIcon = status.icon;
+                  return (
+                    <div
+                      key={order.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+                          <ShoppingCart size={18} className="text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            #{order.id} - {order.business}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {order.customer} · Hace {order.time}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                          ${order.total?.toLocaleString() || 0}
+                        </span>
+                        <Badge variant={status.color} size="sm">
+                          <span className="flex items-center gap-1">
+                            <StatusIcon size={12} />
+                            {status.label}
+                          </span>
+                        </Badge>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </Card.Content>
         </Card>
@@ -354,7 +481,7 @@ const AdminDashboard = () => {
       <Card>
         <Card.Header>
           <Card.Title>Actividad Reciente</Card.Title>
-          <Card.Description>Ultimos movimientos en la plataforma</Card.Description>
+          <Card.Description>Ultimos movimientos en la plataforma (datos de ejemplo)</Card.Description>
         </Card.Header>
         <Card.Content>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">

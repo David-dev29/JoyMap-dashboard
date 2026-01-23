@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import {
   Users,
   Search,
-  ArrowUpDown,
-  MoreHorizontal,
   Eye,
   Mail,
   Phone,
@@ -11,117 +9,11 @@ import {
   ShoppingCart,
   DollarSign,
   MapPin,
+  Check,
+  AlertCircle,
 } from 'lucide-react';
 import { Card, Button, Input, Select, Badge, Table, Modal, Avatar } from '../../components/ui';
-
-// Mock data
-const mockCustomers = [
-  {
-    id: 1,
-    name: 'Juan Perez',
-    email: 'juan.perez@email.com',
-    phone: '+52 999 123 4567',
-    registeredAt: '2024-01-15',
-    totalOrders: 45,
-    totalSpent: 4520,
-    lastOrderDate: '2024-01-20',
-    address: 'Calle 60 #123, Centro, Merida',
-    orders: [
-      { id: '1001', date: '2024-01-20', total: 185, status: 'delivered', business: 'El Buen Sabor' },
-      { id: '998', date: '2024-01-18', total: 92, status: 'delivered', business: 'Pizza Express' },
-      { id: '995', date: '2024-01-15', total: 156, status: 'delivered', business: 'Sushi Master' },
-    ],
-  },
-  {
-    id: 2,
-    name: 'Maria Garcia',
-    email: 'maria.garcia@email.com',
-    phone: '+52 999 234 5678',
-    registeredAt: '2024-01-10',
-    totalOrders: 32,
-    totalSpent: 3280,
-    lastOrderDate: '2024-01-19',
-    address: 'Av. Itzaes #456, Col. Centro',
-    orders: [
-      { id: '999', date: '2024-01-19', total: 78, status: 'delivered', business: 'Cafe Central' },
-      { id: '990', date: '2024-01-16', total: 145, status: 'delivered', business: 'El Buen Sabor' },
-    ],
-  },
-  {
-    id: 3,
-    name: 'Carlos Lopez',
-    email: 'carlos.lopez@email.com',
-    phone: '+52 999 345 6789',
-    registeredAt: '2024-01-05',
-    totalOrders: 28,
-    totalSpent: 2150,
-    lastOrderDate: '2024-01-21',
-    address: 'Calle 35 #789, Fracc. Las Americas',
-    orders: [
-      { id: '1002', date: '2024-01-21', total: 210, status: 'preparing', business: 'Pizza Express' },
-    ],
-  },
-  {
-    id: 4,
-    name: 'Ana Martinez',
-    email: 'ana.martinez@email.com',
-    phone: '+52 999 456 7890',
-    registeredAt: '2023-12-20',
-    totalOrders: 56,
-    totalSpent: 6890,
-    lastOrderDate: '2024-01-20',
-    address: 'Calle 50 #321, Centro',
-    orders: [],
-  },
-  {
-    id: 5,
-    name: 'Pedro Sanchez',
-    email: 'pedro.sanchez@email.com',
-    phone: '+52 999 567 8901',
-    registeredAt: '2024-01-18',
-    totalOrders: 8,
-    totalSpent: 720,
-    lastOrderDate: '2024-01-21',
-    address: 'Av. Prolongacion Montejo #111',
-    orders: [],
-  },
-  {
-    id: 6,
-    name: 'Laura Torres',
-    email: 'laura.torres@email.com',
-    phone: '+52 999 678 9012',
-    registeredAt: '2023-11-15',
-    totalOrders: 89,
-    totalSpent: 12450,
-    lastOrderDate: '2024-01-19',
-    address: 'Calle 21 #456, Col. Garcia Gineres',
-    orders: [],
-  },
-  {
-    id: 7,
-    name: 'Diego Ruiz',
-    email: 'diego.ruiz@email.com',
-    phone: '+52 999 789 0123',
-    registeredAt: '2024-01-12',
-    totalOrders: 15,
-    totalSpent: 1890,
-    lastOrderDate: '2024-01-17',
-    address: 'Calle 25 #789, Centro',
-    orders: [],
-  },
-  {
-    id: 8,
-    name: 'Sofia Morales',
-    email: 'sofia.morales@email.com',
-    phone: '+52 999 890 1234',
-    registeredAt: '2023-10-05',
-    totalOrders: 120,
-    totalSpent: 15680,
-    lastOrderDate: '2024-01-21',
-    address: 'Av. Yucatan #234, Col. Itzimna',
-    orders: [],
-  },
-];
+import { authFetch, ENDPOINTS } from '../../config/api';
 
 const sortOptions = [
   { value: 'recent', label: 'Mas recientes' },
@@ -132,6 +24,16 @@ const sortOptions = [
   { value: 'spent_asc', label: 'Menor gasto' },
 ];
 
+const statusConfig = {
+  pending: { label: 'Pendiente', color: 'warning' },
+  confirmed: { label: 'Confirmado', color: 'info' },
+  preparing: { label: 'Preparando', color: 'info' },
+  ready: { label: 'Listo', color: 'primary' },
+  delivering: { label: 'En camino', color: 'primary' },
+  delivered: { label: 'Entregado', color: 'success' },
+  cancelled: { label: 'Cancelado', color: 'danger' },
+};
+
 const Customers = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -139,24 +41,89 @@ const Customers = () => {
   const [sortBy, setSortBy] = useState('recent');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [customerOrders, setCustomerOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+
+  // Toast state
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+  };
 
   useEffect(() => {
-    // Simulate API fetch
-    setLoading(true);
-    setTimeout(() => {
-      setCustomers(mockCustomers);
-      setLoading(false);
-    }, 500);
+    fetchCustomers();
   }, []);
+
+  const fetchCustomers = async () => {
+    setLoading(true);
+    try {
+      // Fetch users with role=customer
+      const response = await authFetch(`${ENDPOINTS.users.base}?role=customer`);
+      console.log('=== DEBUG Customers ===');
+
+      const data = await response.json();
+      console.log('Customers API Response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al cargar clientes');
+      }
+
+      const usersData = data.users || data.response || data.data || (Array.isArray(data) ? data : []);
+
+      // Map users to customer format with stats
+      const customersWithStats = usersData.map(user => ({
+        _id: user._id,
+        name: user.name || 'Sin nombre',
+        email: user.email || '',
+        phone: user.phone || '',
+        registeredAt: user.createdAt || new Date().toISOString(),
+        totalOrders: user.ordersCount || 0,
+        totalSpent: user.totalSpent || 0,
+        lastOrderDate: user.lastOrderDate || user.createdAt,
+        address: user.address || '',
+      }));
+
+      setCustomers(customersWithStats);
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+      showToast('Error al cargar los clientes', 'error');
+      setCustomers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCustomerOrders = async (customerId) => {
+    setLoadingOrders(true);
+    try {
+      // Try to fetch orders for this customer
+      const response = await authFetch(`${ENDPOINTS.orders.base}?customerId=${customerId}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        const ordersData = data.orders || data.response || data.data || (Array.isArray(data) ? data : []);
+        setCustomerOrders(ordersData.slice(0, 10)); // Last 10 orders
+      } else {
+        setCustomerOrders([]);
+      }
+    } catch (error) {
+      console.error('Error fetching customer orders:', error);
+      setCustomerOrders([]);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
 
   // Filter and sort customers
   const filteredCustomers = customers
     .filter((customer) => {
       const searchLower = searchQuery.toLowerCase();
       return (
-        customer.name.toLowerCase().includes(searchLower) ||
-        customer.email.toLowerCase().includes(searchLower) ||
-        customer.phone.includes(searchQuery)
+        (customer.name || '').toLowerCase().includes(searchLower) ||
+        (customer.email || '').toLowerCase().includes(searchLower) ||
+        (customer.phone || '').includes(searchQuery)
       );
     })
     .sort((a, b) => {
@@ -166,24 +133,26 @@ const Customers = () => {
         case 'recent':
           return new Date(b.registeredAt) - new Date(a.registeredAt);
         case 'orders_desc':
-          return b.totalOrders - a.totalOrders;
+          return (b.totalOrders || 0) - (a.totalOrders || 0);
         case 'orders_asc':
-          return a.totalOrders - b.totalOrders;
+          return (a.totalOrders || 0) - (b.totalOrders || 0);
         case 'spent_desc':
-          return b.totalSpent - a.totalSpent;
+          return (b.totalSpent || 0) - (a.totalSpent || 0);
         case 'spent_asc':
-          return a.totalSpent - b.totalSpent;
+          return (a.totalSpent || 0) - (b.totalSpent || 0);
         default:
           return 0;
       }
     });
 
-  const openDetailModal = (customer) => {
+  const openDetailModal = async (customer) => {
     setSelectedCustomer(customer);
     setIsDetailModalOpen(true);
+    await fetchCustomerOrders(customer._id);
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('es-ES', {
       day: '2-digit',
       month: 'short',
@@ -191,16 +160,20 @@ const Customers = () => {
     });
   };
 
-  const statusConfig = {
-    pending: { label: 'Pendiente', color: 'warning' },
-    preparing: { label: 'Preparando', color: 'info' },
-    ready: { label: 'Listo', color: 'primary' },
-    delivered: { label: 'Entregado', color: 'success' },
-    cancelled: { label: 'Cancelado', color: 'danger' },
-  };
-
   return (
     <div className="space-y-6">
+      {/* Toast */}
+      {toast.show && (
+        <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg ${
+          toast.type === 'success'
+            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+            : 'bg-red-50 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+        }`}>
+          {toast.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
+          {toast.message}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -266,7 +239,7 @@ const Customers = () => {
               />
             ) : (
               filteredCustomers.map((customer) => (
-                <Table.Row key={customer.id}>
+                <Table.Row key={customer._id}>
                   <Table.Cell>
                     <div className="flex items-center gap-3">
                       <Avatar name={customer.name} size="md" />
@@ -279,30 +252,34 @@ const Customers = () => {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                         <Mail size={14} className="text-gray-400" />
-                        {customer.email}
+                        {customer.email || '-'}
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                        <Phone size={14} className="text-gray-400" />
-                        {customer.phone}
-                      </div>
+                      {customer.phone && (
+                        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                          <Phone size={14} className="text-gray-400" />
+                          {customer.phone}
+                        </div>
+                      )}
                     </div>
                   </Table.Cell>
                   <Table.Cell>
                     <div className="text-sm">
                       <p className="text-gray-900 dark:text-white">{formatDate(customer.registeredAt)}</p>
-                      <p className="text-xs text-gray-500">
-                        Ultimo pedido: {formatDate(customer.lastOrderDate)}
-                      </p>
+                      {customer.lastOrderDate && (
+                        <p className="text-xs text-gray-500">
+                          Ultimo pedido: {formatDate(customer.lastOrderDate)}
+                        </p>
+                      )}
                     </div>
                   </Table.Cell>
                   <Table.Cell align="right">
                     <span className="font-medium text-gray-900 dark:text-white">
-                      {customer.totalOrders}
+                      {customer.totalOrders || 0}
                     </span>
                   </Table.Cell>
                   <Table.Cell align="right">
                     <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                      ${customer.totalSpent.toLocaleString()}
+                      ${(customer.totalSpent || 0).toLocaleString()}
                     </span>
                   </Table.Cell>
                   <Table.Cell align="right">
@@ -328,6 +305,7 @@ const Customers = () => {
         onClose={() => {
           setIsDetailModalOpen(false);
           setSelectedCustomer(null);
+          setCustomerOrders([]);
         }}
         title="Detalle del Cliente"
         size="lg"
@@ -344,16 +322,20 @@ const Customers = () => {
                 <div className="mt-2 space-y-1">
                   <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                     <Mail size={14} className="text-gray-400" />
-                    {selectedCustomer.email}
+                    {selectedCustomer.email || '-'}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                    <Phone size={14} className="text-gray-400" />
-                    {selectedCustomer.phone}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                    <MapPin size={14} className="text-gray-400" />
-                    {selectedCustomer.address}
-                  </div>
+                  {selectedCustomer.phone && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                      <Phone size={14} className="text-gray-400" />
+                      {selectedCustomer.phone}
+                    </div>
+                  )}
+                  {selectedCustomer.address && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                      <MapPin size={14} className="text-gray-400" />
+                      {selectedCustomer.address}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -363,21 +345,24 @@ const Customers = () => {
               <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-4 text-center">
                 <ShoppingCart size={24} className="mx-auto text-indigo-600 dark:text-indigo-400 mb-2" />
                 <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">
-                  {selectedCustomer.totalOrders}
+                  {selectedCustomer.totalOrders || 0}
                 </p>
                 <p className="text-sm text-indigo-600 dark:text-indigo-400">Ordenes</p>
               </div>
               <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-xl p-4 text-center">
                 <DollarSign size={24} className="mx-auto text-emerald-600 dark:text-emerald-400 mb-2" />
                 <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
-                  ${selectedCustomer.totalSpent.toLocaleString()}
+                  ${(selectedCustomer.totalSpent || 0).toLocaleString()}
                 </p>
                 <p className="text-sm text-emerald-600 dark:text-emerald-400">Total Gastado</p>
               </div>
               <div className="bg-purple-50 dark:bg-purple-900/30 rounded-xl p-4 text-center">
                 <Calendar size={24} className="mx-auto text-purple-600 dark:text-purple-400 mb-2" />
                 <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
-                  ${(selectedCustomer.totalSpent / selectedCustomer.totalOrders).toFixed(0)}
+                  ${selectedCustomer.totalOrders > 0
+                    ? ((selectedCustomer.totalSpent || 0) / selectedCustomer.totalOrders).toFixed(0)
+                    : 0
+                  }
                 </p>
                 <p className="text-sm text-purple-600 dark:text-purple-400">Ticket Prom.</p>
               </div>
@@ -388,11 +373,15 @@ const Customers = () => {
               <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
                 Historial de Ordenes
               </h4>
-              {selectedCustomer.orders.length > 0 ? (
+              {loadingOrders ? (
+                <div className="text-center py-4">
+                  <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                </div>
+              ) : customerOrders.length > 0 ? (
                 <div className="space-y-2">
-                  {selectedCustomer.orders.map((order) => (
+                  {customerOrders.map((order) => (
                     <div
-                      key={order.id}
+                      key={order._id}
                       className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl"
                     >
                       <div className="flex items-center gap-3">
@@ -401,19 +390,19 @@ const Customers = () => {
                         </div>
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">
-                            Orden #{order.id}
+                            Orden #{order.orderNumber || order._id?.slice(-6)}
                           </p>
                           <p className="text-sm text-gray-500">
-                            {order.business} · {formatDate(order.date)}
+                            {order.business?.name || 'Negocio'} · {formatDate(order.createdAt)}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="font-semibold text-gray-900 dark:text-white">
-                          ${order.total}
+                          ${order.total || 0}
                         </span>
-                        <Badge variant={statusConfig[order.status]?.color} size="sm">
-                          {statusConfig[order.status]?.label}
+                        <Badge variant={statusConfig[order.status]?.color || 'secondary'} size="sm">
+                          {statusConfig[order.status]?.label || order.status}
                         </Badge>
                       </div>
                     </div>
@@ -440,6 +429,7 @@ const Customers = () => {
           <Button variant="ghost" onClick={() => {
             setIsDetailModalOpen(false);
             setSelectedCustomer(null);
+            setCustomerOrders([]);
           }}>
             Cerrar
           </Button>

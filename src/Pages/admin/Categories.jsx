@@ -12,9 +12,11 @@ import {
   Coffee,
   Pill,
   MoreHorizontal,
+  Check,
+  AlertCircle,
 } from 'lucide-react';
-import { Card, Button, Input, Select, Badge, Table, Modal, Dropdown } from '../../components/ui';
-import api from '../../config/api';
+import { Card, Button, Input, Select, Badge, Modal, Dropdown } from '../../components/ui';
+import { authFetch, ENDPOINTS } from '../../config/api';
 
 // Available icons for categories
 const availableIcons = [
@@ -46,6 +48,9 @@ const Categories = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Toast state
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -63,6 +68,11 @@ const Categories = () => {
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+  };
+
   // Fetch categories
   useEffect(() => {
     fetchCategories();
@@ -71,19 +81,24 @@ const Categories = () => {
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/business-categories');
-      setCategories(response.data.categories || response.data || []);
+      const response = await authFetch(ENDPOINTS.businessCategories.base);
+      console.log('=== DEBUG Categories ===');
+      console.log('Endpoint:', ENDPOINTS.businessCategories.base);
+
+      const data = await response.json();
+      console.log('Categories API Response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al cargar categorías');
+      }
+
+      const categoriesData = data.categories || data.response || data.data || (Array.isArray(data) ? data : []);
+      console.log('Final categoriesData:', categoriesData);
+      setCategories(Array.isArray(categoriesData) ? categoriesData : []);
     } catch (error) {
       console.error('Error fetching categories:', error);
-      // Mock data
-      setCategories([
-        { id: 1, name: 'Restaurantes', slug: 'restaurantes', icon: 'utensils', type: 'food', description: 'Restaurantes y comida preparada' },
-        { id: 2, name: 'Cafeterias', slug: 'cafeterias', icon: 'coffee', type: 'food', description: 'Cafes y bebidas' },
-        { id: 3, name: 'Supermercados', slug: 'supermercados', icon: 'shopping', type: 'store', description: 'Tiendas de abarrotes y supermercados' },
-        { id: 4, name: 'Farmacias', slug: 'farmacias', icon: 'pharmacy', type: 'store', description: 'Farmacias y productos de salud' },
-        { id: 5, name: 'Paqueteria', slug: 'paqueteria', icon: 'package', type: 'delivery', description: 'Envio de paquetes' },
-        { id: 6, name: 'Mensajeria', slug: 'mensajeria', icon: 'truck', type: 'delivery', description: 'Servicio de mensajeria express' },
-      ]);
+      showToast('Error al cargar las categorías', 'error');
+      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -116,27 +131,43 @@ const Categories = () => {
 
     setSubmitting(true);
     try {
+      const requestBody = {
+        name: formData.name,
+        slug: formData.slug,
+        icon: formData.icon,
+        type: formData.type,
+        description: formData.description,
+      };
+
+      console.log('=== DEBUG Save Category ===');
+      console.log('Request body:', requestBody);
+
+      let response;
       if (editingCategory) {
-        await api.put(`/business-categories/${editingCategory.id}`, formData);
+        response = await authFetch(`${ENDPOINTS.businessCategories.base}/${editingCategory._id}`, {
+          method: 'PUT',
+          body: JSON.stringify(requestBody),
+        });
       } else {
-        await api.post('/business-categories', formData);
+        response = await authFetch(ENDPOINTS.businessCategories.base, {
+          method: 'POST',
+          body: JSON.stringify(requestBody),
+        });
       }
-      await fetchCategories();
-      closeModal();
+
+      const data = await response.json();
+      console.log('Save response:', data);
+
+      if (response.ok && data.success !== false) {
+        showToast(editingCategory ? 'Categoría actualizada' : 'Categoría creada');
+        await fetchCategories();
+        closeModal();
+      } else {
+        throw new Error(data.message || data.error || 'Error al guardar');
+      }
     } catch (error) {
-      // Update local state
-      if (editingCategory) {
-        setCategories(categories.map(c =>
-          c.id === editingCategory.id ? { ...c, ...formData } : c
-        ));
-      } else {
-        const newCategory = {
-          id: Date.now(),
-          ...formData,
-        };
-        setCategories([...categories, newCategory]);
-      }
-      closeModal();
+      console.error('Error saving category:', error);
+      showToast(error.message || 'Error al guardar la categoría', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -145,10 +176,25 @@ const Categories = () => {
   const handleDelete = async () => {
     setSubmitting(true);
     try {
-      await api.delete(`/business-categories/${selectedCategory.id}`);
-      await fetchCategories();
+      console.log('=== DEBUG Delete Category ===');
+      console.log('Deleting:', selectedCategory._id);
+
+      const response = await authFetch(`${ENDPOINTS.businessCategories.base}/${selectedCategory._id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+      console.log('Delete response:', data);
+
+      if (response.ok && data.success !== false) {
+        showToast('Categoría eliminada');
+        await fetchCategories();
+      } else {
+        throw new Error(data.message || 'Error al eliminar');
+      }
     } catch (error) {
-      setCategories(categories.filter(c => c.id !== selectedCategory.id));
+      console.error('Error deleting category:', error);
+      showToast(error.message || 'Error al eliminar la categoría', 'error');
     } finally {
       setSubmitting(false);
       setIsDeleteModalOpen(false);
@@ -172,10 +218,10 @@ const Categories = () => {
   const openEditModal = (category) => {
     setEditingCategory(category);
     setFormData({
-      name: category.name,
-      slug: category.slug,
-      icon: category.icon,
-      type: category.type,
+      name: category.name || '',
+      slug: category.slug || '',
+      icon: category.icon || 'utensils',
+      type: category.type || 'food',
       description: category.description || '',
     });
     setFormErrors({});
@@ -216,6 +262,18 @@ const Categories = () => {
 
   return (
     <div className="space-y-6">
+      {/* Toast */}
+      {toast.show && (
+        <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg ${
+          toast.type === 'success'
+            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+            : 'bg-red-50 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+        }`}>
+          {toast.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
+          {toast.message}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -260,10 +318,10 @@ const Categories = () => {
           categories.map((category) => {
             const IconComponent = getIconComponent(category.icon);
             return (
-              <Card key={category.id} className="relative group">
+              <Card key={category._id || category.id} className="relative group">
                 <div className="flex items-start gap-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-${typeColors[category.type]}-100 dark:bg-${typeColors[category.type]}-900/30`}>
-                    <IconComponent size={24} className={`text-${typeColors[category.type]}-600 dark:text-${typeColors[category.type]}-400`} />
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-${typeColors[category.type] || 'gray'}-100 dark:bg-${typeColors[category.type] || 'gray'}-900/30`}>
+                    <IconComponent size={24} className={`text-${typeColors[category.type] || 'gray'}-600 dark:text-${typeColors[category.type] || 'gray'}-400`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-900 dark:text-white truncate">
@@ -277,8 +335,8 @@ const Categories = () => {
                         {category.description}
                       </p>
                     )}
-                    <Badge variant={typeColors[category.type]} size="xs" className="mt-2">
-                      {typeOptions.find(t => t.value === category.type)?.label}
+                    <Badge variant={typeColors[category.type] || 'secondary'} size="xs" className="mt-2">
+                      {typeOptions.find(t => t.value === category.type)?.label || category.type}
                     </Badge>
                   </div>
 
@@ -322,6 +380,13 @@ const Categories = () => {
           })
         )}
       </div>
+
+      {/* Results count */}
+      {!loading && categories.length > 0 && (
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {categories.length} categorías en total
+        </p>
+      )}
 
       {/* Create/Edit Modal */}
       <Modal

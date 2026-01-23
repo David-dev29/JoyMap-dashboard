@@ -202,19 +202,29 @@ const Businesses = () => {
 
     setSubmitting(true);
     try {
+      // Build request body - try 'category' as field name (common pattern)
+      const requestBody = {
+        name: formData.name,
+        category: formData.category, // ObjectId of business category
+        description: formData.description,
+        address: formData.address,
+        phone: formData.phone,
+        email: formData.email,
+        isOpen: true, // Default to active
+      };
+
+      console.log('=== DEBUG Create Business ===');
+      console.log('Endpoint:', ENDPOINTS.businesses.create);
+      console.log('Request body:', requestBody);
+
       const response = await authFetch(ENDPOINTS.businesses.create, {
         method: 'POST',
-        body: JSON.stringify({
-          name: formData.name,
-          categoryId: formData.category,
-          description: formData.description,
-          address: formData.address,
-          phone: formData.phone,
-          email: formData.email,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
+      console.log('Response status:', response.status);
+      console.log('Response data:', data);
 
       if (response.ok && data.success !== false) {
         showToast('Negocio creado exitosamente');
@@ -222,7 +232,7 @@ const Businesses = () => {
         setIsCreateModalOpen(false);
         resetForm();
       } else {
-        throw new Error(data.message || 'Error al crear negocio');
+        throw new Error(data.message || data.error || 'Error al crear negocio');
       }
     } catch (error) {
       console.error('Error creating business:', error);
@@ -245,16 +255,21 @@ const Businesses = () => {
 
     setSubmitting(true);
     try {
+      const requestBody = {
+        name: formData.name,
+        category: formData.category,
+        description: formData.description,
+        address: formData.address,
+        phone: formData.phone,
+        email: formData.email,
+      };
+
+      console.log('=== DEBUG Edit Business ===');
+      console.log('Request body:', requestBody);
+
       const response = await authFetch(ENDPOINTS.businesses.byId(selectedBusiness._id), {
         method: 'PUT',
-        body: JSON.stringify({
-          name: formData.name,
-          categoryId: formData.category,
-          description: formData.description,
-          address: formData.address,
-          phone: formData.phone,
-          email: formData.email,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
