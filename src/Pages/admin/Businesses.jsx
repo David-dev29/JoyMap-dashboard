@@ -241,16 +241,16 @@ const Businesses = () => {
 
     setSubmitting(true);
     try {
-      // Build request body with coordinates object
+      // Build request body with coordinates array [lng, lat] (GeoJSON format)
       const requestBody = {
         name: formData.name,
         category: formData.category, // ObjectId of business category
         description: formData.description,
         address: formData.address,
-        coordinates: {
-          latitude: parseFloat(formData.latitude) || 0,
-          longitude: parseFloat(formData.longitude) || 0,
-        },
+        coordinates: [
+          parseFloat(formData.longitude) || 0,  // longitude first
+          parseFloat(formData.latitude) || 0,   // latitude second
+        ],
         phone: formData.phone,
         email: formData.email,
         isOpen: true, // Default to active
@@ -304,10 +304,10 @@ const Businesses = () => {
         category: formData.category,
         description: formData.description,
         address: formData.address,
-        coordinates: {
-          latitude: parseFloat(formData.latitude) || 0,
-          longitude: parseFloat(formData.longitude) || 0,
-        },
+        coordinates: [
+          parseFloat(formData.longitude) || 0,  // longitude first
+          parseFloat(formData.latitude) || 0,   // latitude second
+        ],
         phone: formData.phone,
         email: formData.email,
       };
@@ -433,6 +433,8 @@ const Businesses = () => {
 
   const openEditModal = (business) => {
     setSelectedBusiness(business);
+    // coordinates is array [lng, lat] in GeoJSON format
+    const coords = business.coordinates || [];
     setFormData({
       name: business.name || '',
       category: business.category?._id || business.categoryId || '',
@@ -440,8 +442,8 @@ const Businesses = () => {
       address: business.address || '',
       phone: business.phone || '',
       email: business.email || '',
-      latitude: business.coordinates?.latitude?.toString() || '',
-      longitude: business.coordinates?.longitude?.toString() || '',
+      latitude: coords[1]?.toString() || '',   // lat is second element
+      longitude: coords[0]?.toString() || '',  // lng is first element
     });
     setIsEditModalOpen(true);
   };
@@ -1036,12 +1038,12 @@ const Businesses = () => {
                   <p className="mt-1 text-gray-900 dark:text-white">{selectedBusiness.address}</p>
                 </div>
               )}
-              {selectedBusiness.coordinates && (selectedBusiness.coordinates.latitude || selectedBusiness.coordinates.longitude) && (
+              {selectedBusiness.coordinates && selectedBusiness.coordinates.length >= 2 && (
                 <div className="col-span-2">
                   <label className="text-sm text-gray-500 dark:text-gray-400">Coordenadas</label>
                   <p className="mt-1 text-gray-900 dark:text-white flex items-center gap-2">
                     <MapPin size={16} className="text-gray-400" />
-                    {selectedBusiness.coordinates.latitude}, {selectedBusiness.coordinates.longitude}
+                    {selectedBusiness.coordinates[1]}, {selectedBusiness.coordinates[0]}
                   </p>
                 </div>
               )}
