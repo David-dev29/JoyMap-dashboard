@@ -1,27 +1,28 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Package,
   Plus,
   Search,
-  Filter,
   Edit2,
   Trash2,
   Upload,
   Check,
-  X,
   DollarSign,
   AlertTriangle,
-  Eye,
-  EyeOff,
+  Boxes,
+  ArrowRight,
 } from 'lucide-react';
 import { Card, Button, Input, Badge, Table, Modal, Toggle } from '../../components/ui';
-import { getMyProducts, getMyCategories, createProduct, updateProduct, deleteProduct } from '../../services/api';
+import { getMyBusiness } from '../../services/api';
 import { authFetch, ENDPOINTS } from '../../config/api';
 
 const Products = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [business, setBusiness] = useState(null);
   const [error, setError] = useState('');
 
   // Filters
@@ -40,7 +41,7 @@ const Products = () => {
     name: '',
     description: '',
     price: 0,
-    categoryId: '',
+    productCategoryId: '',
     isAvailable: true,
   });
   const [imagePreview, setImagePreview] = useState(null);
@@ -53,88 +54,77 @@ const Products = () => {
 
   // Load data
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        setError('');
-
-        // Try to get categories with products populated
-        const categoriesRes = await getMyCategories('products');
-
-        console.log('=== DEBUG Products Page ===');
-        console.log('Categories response (raw):', categoriesRes);
-
-        // Extract categories - handle different response formats
-        let categoriesList = [];
-        if (categoriesRes.response && Array.isArray(categoriesRes.response)) {
-          categoriesList = categoriesRes.response;
-        } else if (categoriesRes.categories && Array.isArray(categoriesRes.categories)) {
-          categoriesList = categoriesRes.categories;
-        } else if (categoriesRes.data && Array.isArray(categoriesRes.data)) {
-          categoriesList = categoriesRes.data;
-        } else if (Array.isArray(categoriesRes)) {
-          categoriesList = categoriesRes;
-        }
-
-        console.log('Categories extracted:', categoriesList);
-        setCategories(categoriesList);
-
-        // Extract products from categories (products come nested in categories when populate=products)
-        let productsList = [];
-        categoriesList.forEach(category => {
-          if (category.products && Array.isArray(category.products)) {
-            // Products are nested inside each category
-            category.products.forEach(product => {
-              productsList.push({
-                ...product,
-                category: { _id: category._id, name: category.name },
-                categoryId: category._id,
-              });
-            });
-          }
-        });
-
-        console.log('Products extracted from categories:', productsList);
-
-        // If no products found in categories, try direct products endpoint
-        if (productsList.length === 0) {
-          console.log('No products in categories, trying direct endpoint...');
-          const productsRes = await getMyProducts();
-          console.log('Direct products response:', productsRes);
-
-          const productsData = productsRes.response || productsRes.products || productsRes.data || productsRes || [];
-
-          if (Array.isArray(productsData)) {
-            productsData.forEach(item => {
-              if (item.products && Array.isArray(item.products)) {
-                // Products nested in categories
-                productsList = [...productsList, ...item.products.map(p => ({
-                  ...p,
-                  category: { _id: item._id, name: item.name },
-                  categoryId: item._id,
-                }))];
-              } else if (item._id && item.name) {
-                // Direct product object
-                productsList.push(item);
-              }
-            });
-          }
-
-          console.log('Products from direct endpoint:', productsList);
-        }
-
-        setProducts(productsList);
-
-      } catch (err) {
-        console.error('Error loading data:', err);
-        setError('Error al cargar los datos');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadData();
   }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      // Get business info first
+      const businessRes = await getMyBusiness();
+      const businessData = businessRes.business || businessRes.data || businessRes;
+      setBusiness(businessData);
+
+      console.log('=== DEBUG Products Page ===');
+      console.log('Business:', businessData);
+
+      // Get categories with products populated
+      // Endpoint: GET /api/me/categories?populate=products
+      const categoriesResponse = await authFetch(`${ENDPOINTS.me.categories}?populate=products`);
+      const categoriesRes = await categoriesResponse.json();
+
+      console.log('Categories response (raw):', categoriesRes);
+
+      // Extract categories - response format: { success: true, categories: [...] }
+      let categoriesList = [];
+      if (categoriesRes.success && Array.isArray(categoriesRes.categories)) {
+        categoriesList = categoriesRes.categories;
+      } else if (Array.isArray(categoriesRes.categories)) {
+        categoriesList = categoriesRes.categories;
+      } else if (Array.isArray(categoriesRes.data)) {
+        categoriesList = categoriesRes.data;
+      } else if (Array.isArray(categoriesRes)) {
+        categoriesList = categoriesRes;
+      }
+
+      console.log('Categories extracted:', categoriesList);
+      console.log('Number of categories:', categoriesList.length);
+
+      setCategories(categoriesList);
+
+      // Extract products from categories
+      // Each category has: _id, name, businessId, products[]
+      let productsList = [];
+      categoriesList.forEach(category => {
+        console.log(`Category "${category.name}":`, category);
+
+        if (category.products && Array.isArray(category.products)) {
+          console.log(`  - Products in category:`, category.products.length);
+
+          category.products.forEach(product => {
+            productsList.push({
+              ...product,
+              category: { _id: category._id, name: category.name },
+              productCategoryId: category._id,
+            });
+          });
+        }
+      });
+
+      console.log('Total products extracted:', productsList.length);
+      console.log('Products list:', productsList);
+
+      setProducts(productsList);
+
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('Error al cargar los datos');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter products
   const filteredProducts = products.filter(product => {
@@ -142,7 +132,7 @@ const Products = () => {
       product.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesCategory = categoryFilter === 'all' ||
-      product.categoryId === categoryFilter ||
+      product.productCategoryId === categoryFilter ||
       product.category?._id === categoryFilter;
 
     const matchesAvailability = availabilityFilter === 'all' ||
@@ -153,12 +143,16 @@ const Products = () => {
   });
 
   const openCreateModal = () => {
+    if (categories.length === 0) {
+      setModalError('Primero debes crear una categoria');
+      return;
+    }
     setEditingProduct(null);
     setFormData({
       name: '',
       description: '',
       price: 0,
-      categoryId: categories[0]?._id || '',
+      productCategoryId: categories[0]?._id || '',
       isAvailable: true,
     });
     setImagePreview(null);
@@ -173,7 +167,7 @@ const Products = () => {
       name: product.name || '',
       description: product.description || '',
       price: product.price || 0,
-      categoryId: product.categoryId || product.category?._id || '',
+      productCategoryId: product.productCategoryId || product.category?._id || '',
       isAvailable: product.isAvailable !== false,
     });
     if (product.image) {
@@ -208,8 +202,12 @@ const Products = () => {
       setModalError('El nombre es requerido');
       return;
     }
-    if (!formData.categoryId) {
+    if (!formData.productCategoryId) {
       setModalError('Selecciona una categoria');
+      return;
+    }
+    if (!business?._id) {
+      setModalError('No se encontro el negocio');
       return;
     }
 
@@ -221,12 +219,17 @@ const Products = () => {
       formDataToSend.append('name', formData.name);
       formDataToSend.append('description', formData.description);
       formDataToSend.append('price', formData.price);
-      formDataToSend.append('categoryId', formData.categoryId);
+      formDataToSend.append('productCategoryId', formData.productCategoryId);
+      formDataToSend.append('businessId', business._id);
       formDataToSend.append('isAvailable', formData.isAvailable);
 
       if (imageFile) {
         formDataToSend.append('image', imageFile);
       }
+
+      console.log('=== Creating/Updating Product ===');
+      console.log('productCategoryId:', formData.productCategoryId);
+      console.log('businessId:', business._id);
 
       let response;
       if (editingProduct) {
@@ -242,26 +245,11 @@ const Products = () => {
       }
 
       const data = await response.json();
+      console.log('Save response:', data);
 
       if (data.success !== false || data.product) {
-        // Reload products
-        const productsRes = await getMyProducts();
-        let productsList = [];
-        const productsData = productsRes.products || productsRes.data || productsRes || [];
-
-        if (Array.isArray(productsData)) {
-          productsData.forEach(item => {
-            if (item.products && Array.isArray(item.products)) {
-              productsList = [...productsList, ...item.products.map(p => ({
-                ...p,
-                category: { _id: item._id, name: item.name }
-              }))];
-            } else {
-              productsList.push(item);
-            }
-          });
-        }
-        setProducts(productsList);
+        // Reload all data
+        await loadData();
         setIsModalOpen(false);
       } else {
         throw new Error(data.message || 'Error al guardar');
@@ -301,7 +289,9 @@ const Products = () => {
     if (!productToDelete) return;
 
     try {
-      await deleteProduct(productToDelete._id);
+      await authFetch(ENDPOINTS.products.byId(productToDelete._id), {
+        method: 'DELETE',
+      });
       setProducts(prev => prev.filter(p => p._id !== productToDelete._id));
       setDeleteModalOpen(false);
       setProductToDelete(null);
@@ -312,7 +302,7 @@ const Products = () => {
 
   const getCategoryName = (product) => {
     if (product.category?.name) return product.category.name;
-    const cat = categories.find(c => c._id === product.categoryId);
+    const cat = categories.find(c => c._id === product.productCategoryId);
     return cat?.name || '-';
   };
 
@@ -323,6 +313,47 @@ const Products = () => {
           <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
           <span className="text-slate-500 dark:text-slate-400">Cargando productos...</span>
         </div>
+      </div>
+    );
+  }
+
+  // No categories - show message to create categories first
+  if (categories.length === 0) {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Productos
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">
+            Gestiona el catalogo de productos de tu negocio
+          </p>
+        </div>
+
+        {/* No categories message */}
+        <Card className="text-center py-12">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
+              <Boxes size={32} className="text-amber-500" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                No tienes categorias
+              </h2>
+              <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                Crea tu primera categoria para organizar tus productos. Las categorias te ayudan a mantener tu menu ordenado.
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              onClick={() => navigate('/products/categories')}
+              rightIcon={<ArrowRight size={18} />}
+            >
+              Crear Categoria
+            </Button>
+          </div>
+        </Card>
       </div>
     );
   }
@@ -402,7 +433,7 @@ const Products = () => {
                   colSpan={5}
                   message={searchTerm || categoryFilter !== 'all' || availabilityFilter !== 'all'
                     ? "No hay productos que coincidan con los filtros"
-                    : "No hay productos registrados"}
+                    : "No hay productos registrados. Crea tu primer producto."}
                 />
               ) : (
                 filteredProducts.map((product) => (
@@ -565,8 +596,8 @@ const Products = () => {
                 Categoria
               </label>
               <select
-                value={formData.categoryId}
-                onChange={(e) => setFormData(prev => ({ ...prev, categoryId: e.target.value }))}
+                value={formData.productCategoryId}
+                onChange={(e) => setFormData(prev => ({ ...prev, productCategoryId: e.target.value }))}
                 className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Seleccionar...</option>

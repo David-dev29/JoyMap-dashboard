@@ -40,27 +40,39 @@ const ProductCategories = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
 
-  // Load data
+  // Load data - Uses GET /api/me/categories
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
         setError('');
 
+        console.log('=== DEBUG ProductCategories: Loading data ===');
+
         const [categoriesRes, businessRes] = await Promise.all([
-          getMyCategories('products'),
+          getMyCategories(),
           getMyBusiness(),
         ]);
 
-        console.log('=== DEBUG ProductCategories (Business) ===');
-        console.log('Categories:', categoriesRes);
-        console.log('Business:', businessRes);
+        console.log('Categories response:', categoriesRes);
+        console.log('Business response:', businessRes);
 
-        const categoriesList = categoriesRes.response || categoriesRes.categories || categoriesRes.data || [];
-        if (Array.isArray(categoriesList)) {
-          categoriesList.sort((a, b) => (a.order || 0) - (b.order || 0));
-          setCategories(categoriesList);
+        // Handle response format: { success: true, categories: [...] }
+        let categoriesList = [];
+        if (categoriesRes.success && Array.isArray(categoriesRes.categories)) {
+          categoriesList = categoriesRes.categories;
+        } else if (Array.isArray(categoriesRes.response)) {
+          categoriesList = categoriesRes.response;
+        } else if (Array.isArray(categoriesRes.data)) {
+          categoriesList = categoriesRes.data;
+        } else if (Array.isArray(categoriesRes)) {
+          categoriesList = categoriesRes;
         }
+
+        console.log('Parsed categories:', categoriesList);
+
+        categoriesList.sort((a, b) => (a.order || 0) - (b.order || 0));
+        setCategories(categoriesList);
 
         const businessData = businessRes.business || businessRes.data || businessRes;
         setBusiness(businessData);
@@ -123,6 +135,7 @@ const ProductCategories = () => {
     reader.readAsDataURL(file);
   };
 
+  // Uses POST /api/product-categories/create or PUT /api/product-categories/:id
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
       setModalError('El nombre es requerido');
@@ -148,29 +161,47 @@ const ProductCategories = () => {
         formDataToSend.append('icon', iconFile);
       }
 
+      console.log('=== DEBUG ProductCategories: Saving ===');
+      console.log('Editing:', editingCategory ? editingCategory._id : 'new');
+      console.log('Business ID:', business._id);
+
       let response;
       if (editingCategory) {
-        response = await authFetch(ENDPOINTS.categories.byId(editingCategory._id), {
+        // PUT /api/product-categories/:id
+        const url = ENDPOINTS.productCategories.byId(editingCategory._id);
+        console.log('PUT URL:', url);
+        response = await authFetch(url, {
           method: 'PUT',
           body: formDataToSend,
         });
       } else {
-        response = await authFetch(ENDPOINTS.categories.create, {
+        // POST /api/product-categories/create
+        const url = ENDPOINTS.productCategories.create;
+        console.log('POST URL:', url);
+        response = await authFetch(url, {
           method: 'POST',
           body: formDataToSend,
         });
       }
 
       const data = await response.json();
+      console.log('Save response:', data);
 
       if (data.success !== false || data.category) {
-        // Reload categories
-        const catRes = await getMyCategories('products');
-        const categoriesList = catRes.response || catRes.categories || catRes.data || [];
-        if (Array.isArray(categoriesList)) {
-          categoriesList.sort((a, b) => (a.order || 0) - (b.order || 0));
-          setCategories(categoriesList);
+        // Reload categories using GET /api/me/categories
+        const catRes = await getMyCategories();
+        let categoriesList = [];
+        if (catRes.success && Array.isArray(catRes.categories)) {
+          categoriesList = catRes.categories;
+        } else if (Array.isArray(catRes.response)) {
+          categoriesList = catRes.response;
+        } else if (Array.isArray(catRes.data)) {
+          categoriesList = catRes.data;
+        } else if (Array.isArray(catRes)) {
+          categoriesList = catRes;
         }
+        categoriesList.sort((a, b) => (a.order || 0) - (b.order || 0));
+        setCategories(categoriesList);
         setIsModalOpen(false);
       } else {
         throw new Error(data.message || 'Error al guardar');
@@ -188,13 +219,21 @@ const ProductCategories = () => {
     setDeleteModalOpen(true);
   };
 
+  // Uses DELETE /api/product-categories/:id
   const handleDelete = async () => {
     if (!categoryToDelete) return;
 
     try {
-      await authFetch(ENDPOINTS.categories.byId(categoryToDelete._id), {
+      const url = ENDPOINTS.productCategories.byId(categoryToDelete._id);
+      console.log('=== DEBUG ProductCategories: Deleting ===');
+      console.log('DELETE URL:', url);
+
+      const response = await authFetch(url, {
         method: 'DELETE',
       });
+      const data = await response.json();
+      console.log('Delete response:', data);
+
       setCategories(prev => prev.filter(c => c._id !== categoryToDelete._id));
       setDeleteModalOpen(false);
       setCategoryToDelete(null);

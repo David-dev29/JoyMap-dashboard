@@ -22,11 +22,18 @@ export const isProd = ENV === 'production';
  * Endpoints de la API organizados por módulo
  */
 export const ENDPOINTS = {
-  // Categorías
+  // Categorías (legacy)
   categories: {
     base: `${API_BASE_URL}/categories`,
     create: `${API_BASE_URL}/categories/create`,
     byId: (id) => `${API_BASE_URL}/categories/${id}`,
+  },
+
+  // Categorías de Productos
+  productCategories: {
+    base: `${API_BASE_URL}/product-categories`,
+    create: `${API_BASE_URL}/product-categories/create`,
+    byId: (id) => `${API_BASE_URL}/product-categories/${id}`,
   },
 
   // Productos
