@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ShoppingCart,
   DollarSign,
@@ -35,6 +36,7 @@ const statusLabels = {
 };
 
 const BusinessDashboard = () => {
+  const navigate = useNavigate();
   const { selectedBusiness } = useBusiness();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -218,7 +220,10 @@ const BusinessDashboard = () => {
             {business?.name || selectedBusiness?.name || 'Mi Negocio'} - Resumen del dia
           </p>
         </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm shadow-indigo-500/25">
+        <button
+          onClick={() => navigate('/orders')}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm shadow-indigo-500/25"
+        >
           <Plus size={18} />
           Nuevo pedido
         </button>

@@ -58,38 +58,72 @@ const Products = () => {
         setLoading(true);
         setError('');
 
-        const [productsRes, categoriesRes] = await Promise.all([
-          getMyProducts(),
-          getMyCategories('products'),
-        ]);
+        // Try to get categories with products populated
+        const categoriesRes = await getMyCategories('products');
 
-        console.log('=== DEBUG Products ===');
-        console.log('Products response:', productsRes);
-        console.log('Categories response:', categoriesRes);
+        console.log('=== DEBUG Products Page ===');
+        console.log('Categories response (raw):', categoriesRes);
 
-        // Extract products - handle nested structure
+        // Extract categories - handle different response formats
+        let categoriesList = [];
+        if (categoriesRes.response && Array.isArray(categoriesRes.response)) {
+          categoriesList = categoriesRes.response;
+        } else if (categoriesRes.categories && Array.isArray(categoriesRes.categories)) {
+          categoriesList = categoriesRes.categories;
+        } else if (categoriesRes.data && Array.isArray(categoriesRes.data)) {
+          categoriesList = categoriesRes.data;
+        } else if (Array.isArray(categoriesRes)) {
+          categoriesList = categoriesRes;
+        }
+
+        console.log('Categories extracted:', categoriesList);
+        setCategories(categoriesList);
+
+        // Extract products from categories (products come nested in categories when populate=products)
         let productsList = [];
-        const productsData = productsRes.products || productsRes.data || productsRes || [];
+        categoriesList.forEach(category => {
+          if (category.products && Array.isArray(category.products)) {
+            // Products are nested inside each category
+            category.products.forEach(product => {
+              productsList.push({
+                ...product,
+                category: { _id: category._id, name: category.name },
+                categoryId: category._id,
+              });
+            });
+          }
+        });
 
-        if (Array.isArray(productsData)) {
-          productsData.forEach(item => {
-            if (item.products && Array.isArray(item.products)) {
-              // Products nested in categories
-              productsList = [...productsList, ...item.products.map(p => ({
-                ...p,
-                category: { _id: item._id, name: item.name }
-              }))];
-            } else {
-              productsList.push(item);
-            }
-          });
+        console.log('Products extracted from categories:', productsList);
+
+        // If no products found in categories, try direct products endpoint
+        if (productsList.length === 0) {
+          console.log('No products in categories, trying direct endpoint...');
+          const productsRes = await getMyProducts();
+          console.log('Direct products response:', productsRes);
+
+          const productsData = productsRes.response || productsRes.products || productsRes.data || productsRes || [];
+
+          if (Array.isArray(productsData)) {
+            productsData.forEach(item => {
+              if (item.products && Array.isArray(item.products)) {
+                // Products nested in categories
+                productsList = [...productsList, ...item.products.map(p => ({
+                  ...p,
+                  category: { _id: item._id, name: item.name },
+                  categoryId: item._id,
+                }))];
+              } else if (item._id && item.name) {
+                // Direct product object
+                productsList.push(item);
+              }
+            });
+          }
+
+          console.log('Products from direct endpoint:', productsList);
         }
 
         setProducts(productsList);
-
-        // Extract categories
-        const categoriesList = categoriesRes.response || categoriesRes.categories || categoriesRes.data || [];
-        setCategories(Array.isArray(categoriesList) ? categoriesList : []);
 
       } catch (err) {
         console.error('Error loading data:', err);

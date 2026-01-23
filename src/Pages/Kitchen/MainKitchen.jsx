@@ -19,7 +19,7 @@ const KitchenMain = () => {
 
   const handleOrderComplete = async (orderId) => {
     // Remover de la lista local
-    setOrders(orders.filter(o => o._id !== orderId));
+    setOrders(prev => (prev || []).filter(o => o._id !== orderId));
   };
   // ------------------- SOCKET: Actualizaciones en tiempo real -------------------
   useEffect(() => {
@@ -55,8 +55,12 @@ const KitchenMain = () => {
   useEffect(() => {
     fetch(ENDPOINTS.orders.active)
       .then(res => res.json())
-      .then(data => setOrders(data.orders))
-      .catch(() => {});
+      .then(data => {
+        // Handle different response formats and ensure we always have an array
+        const ordersList = data.orders || data.data || data || [];
+        setOrders(Array.isArray(ordersList) ? ordersList : []);
+      })
+      .catch(() => setOrders([]));
   }, []);
 
   // ------------------- FUNC: Marcar item como preparado -------------------
@@ -84,10 +88,11 @@ const KitchenMain = () => {
 ];
 
 
-const kitchenOrders = orders
-  .filter(order => order.status === "preparing")
+const kitchenOrders = (orders || [])
+  .filter(order => order && order.status === "preparing")
   .map(order => {
-    const kitchenItems = order.items.filter(
+    const items = order.items || [];
+    const kitchenItems = items.filter(
       it => it.productId?.kitchenId?._id === activeTab && it.status !== "prepared"
     );
 
@@ -121,11 +126,11 @@ const kitchenOrders = orders
           tabs={kitchens.map(k => ({
             id: k._id,
             label: k.name,
-            count: orders
-              .filter(o => o.status === "preparing")
+            count: (orders || [])
+              .filter(o => o && o.status === "preparing")
               .reduce(
                 (acc, o) =>
-                  acc + o.items.filter(
+                  acc + (o.items || []).filter(
                     it => it.productId?.kitchenId?._id === k._id && it.status !== "prepared"
                   ).length,
                 0
