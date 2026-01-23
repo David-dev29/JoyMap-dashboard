@@ -12,91 +12,11 @@ import {
   Building2,
   Copy,
   CheckCircle,
+  Check,
+  AlertCircle,
 } from 'lucide-react';
 import { Card, Button, Input, Select, Badge, Table, Modal, Dropdown } from '../../components/ui';
-
-// Mock data
-const mockDiscounts = [
-  {
-    id: 1,
-    code: 'BIENVENIDO20',
-    type: 'percentage',
-    value: 20,
-    business: null,
-    businessName: 'Todos los negocios',
-    usageCount: 156,
-    usageLimit: 500,
-    startDate: '2024-01-01',
-    endDate: '2024-03-31',
-    status: 'active',
-    minOrder: 100,
-  },
-  {
-    id: 2,
-    code: 'PIZZA50',
-    type: 'fixed',
-    value: 50,
-    business: 2,
-    businessName: 'Pizza Express',
-    usageCount: 89,
-    usageLimit: 200,
-    startDate: '2024-01-15',
-    endDate: '2024-02-15',
-    status: 'active',
-    minOrder: 150,
-  },
-  {
-    id: 3,
-    code: 'SUSHI15',
-    type: 'percentage',
-    value: 15,
-    business: 3,
-    businessName: 'Sushi Master',
-    usageCount: 200,
-    usageLimit: 200,
-    startDate: '2024-01-01',
-    endDate: '2024-01-31',
-    status: 'expired',
-    minOrder: 200,
-  },
-  {
-    id: 4,
-    code: 'ENVIOGRATIS',
-    type: 'fixed',
-    value: 35,
-    business: null,
-    businessName: 'Todos los negocios',
-    usageCount: 45,
-    usageLimit: null,
-    startDate: '2024-02-01',
-    endDate: '2024-12-31',
-    status: 'active',
-    minOrder: 250,
-  },
-  {
-    id: 5,
-    code: 'PROMO10',
-    type: 'percentage',
-    value: 10,
-    business: 1,
-    businessName: 'El Buen Sabor',
-    usageCount: 0,
-    usageLimit: 100,
-    startDate: '2024-02-01',
-    endDate: '2024-02-28',
-    status: 'scheduled',
-    minOrder: 0,
-  },
-];
-
-const mockBusinesses = [
-  { value: '', label: 'Todos los negocios' },
-  { value: '1', label: 'El Buen Sabor' },
-  { value: '2', label: 'Pizza Express' },
-  { value: '3', label: 'Sushi Master' },
-  { value: '4', label: 'Taqueria Don Jose' },
-  { value: '5', label: 'Cafe Central' },
-];
+import { authFetch, ENDPOINTS } from '../../config/api';
 
 const statusConfig = {
   active: { label: 'Activo', color: 'success' },
@@ -107,6 +27,7 @@ const statusConfig = {
 
 const Discounts = () => {
   const [discounts, setDiscounts] = useState([]);
+  const [businesses, setBusinesses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -123,8 +44,8 @@ const Discounts = () => {
     code: '',
     type: 'percentage',
     value: '',
-    business: '',
-    usageLimit: '',
+    businessId: '',
+    maxUses: '',
     startDate: '',
     endDate: '',
     minOrder: '',
@@ -132,20 +53,86 @@ const Discounts = () => {
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
+  // Toast state
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+  };
+
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setDiscounts(mockDiscounts);
-      setLoading(false);
-    }, 500);
+    fetchDiscounts();
+    fetchBusinesses();
   }, []);
+
+  const fetchDiscounts = async () => {
+    setLoading(true);
+    try {
+      const response = await authFetch(ENDPOINTS.discounts.base);
+      const data = await response.json();
+
+      if (response.ok) {
+        const discountsList = data.discounts || data.response || data.data || (Array.isArray(data) ? data : []);
+        // Calculate status based on dates and isActive
+        const discountsWithStatus = discountsList.map(d => ({
+          ...d,
+          status: getDiscountStatus(d),
+        }));
+        setDiscounts(Array.isArray(discountsWithStatus) ? discountsWithStatus : []);
+      } else {
+        throw new Error(data.message || 'Error al cargar descuentos');
+      }
+    } catch (error) {
+      console.error('Error fetching discounts:', error);
+      showToast('Error al cargar los descuentos', 'error');
+      setDiscounts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchBusinesses = async () => {
+    try {
+      const response = await authFetch(ENDPOINTS.businesses.all);
+      const data = await response.json();
+
+      if (response.ok) {
+        const businessList = data.businesses || data.response || data.data || (Array.isArray(data) ? data : []);
+        setBusinesses(Array.isArray(businessList) ? businessList : []);
+      }
+    } catch (error) {
+      console.error('Error fetching businesses:', error);
+    }
+  };
+
+  // Calculate discount status based on dates and isActive
+  const getDiscountStatus = (discount) => {
+    if (!discount.isActive) return 'disabled';
+    const now = new Date();
+    const startDate = new Date(discount.startDate);
+    const endDate = new Date(discount.endDate);
+
+    if (now < startDate) return 'scheduled';
+    if (now > endDate) return 'expired';
+    return 'active';
+  };
 
   // Filter discounts
   const filteredDiscounts = discounts.filter((discount) => {
-    const matchesSearch = discount.code.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = discount.code?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = !statusFilter || discount.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // Build business options for select
+  const businessOptions = [
+    { value: '', label: 'Todos los negocios' },
+    ...businesses.map(b => ({
+      value: b._id,
+      label: b.name,
+    })),
+  ];
 
   // Handlers
   const handleSubmit = async () => {
@@ -153,8 +140,8 @@ const Discounts = () => {
 
     const errors = {};
     if (!formData.code.trim()) errors.code = 'El codigo es requerido';
-    if (!formData.value || formData.value <= 0) errors.value = 'El valor debe ser mayor a 0';
-    if (formData.type === 'percentage' && formData.value > 100) {
+    if (!formData.value || parseFloat(formData.value) <= 0) errors.value = 'El valor debe ser mayor a 0';
+    if (formData.type === 'percentage' && parseFloat(formData.value) > 100) {
       errors.value = 'El porcentaje no puede ser mayor a 100';
     }
     if (!formData.startDate) errors.startDate = 'La fecha de inicio es requerida';
@@ -166,39 +153,74 @@ const Discounts = () => {
     }
 
     setSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    try {
+      const requestBody = {
+        code: formData.code.toUpperCase(),
+        type: formData.type,
+        value: parseFloat(formData.value),
+        businessId: formData.businessId || null,
+        minOrder: formData.minOrder ? parseFloat(formData.minOrder) : 0,
+        maxUses: formData.maxUses ? parseInt(formData.maxUses) : null,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        isActive: true,
+      };
 
-    const newDiscount = {
-      id: editingDiscount?.id || Date.now(),
-      ...formData,
-      code: formData.code.toUpperCase(),
-      value: parseFloat(formData.value),
-      usageLimit: formData.usageLimit ? parseInt(formData.usageLimit) : null,
-      minOrder: formData.minOrder ? parseFloat(formData.minOrder) : 0,
-      usageCount: editingDiscount?.usageCount || 0,
-      businessName: formData.business
-        ? mockBusinesses.find((b) => b.value === formData.business)?.label
-        : 'Todos los negocios',
-      status: new Date(formData.startDate) > new Date() ? 'scheduled' : 'active',
-    };
+      let response;
+      if (editingDiscount) {
+        response = await authFetch(ENDPOINTS.discounts.byId(editingDiscount._id), {
+          method: 'PUT',
+          body: JSON.stringify(requestBody),
+        });
+      } else {
+        response = await authFetch(ENDPOINTS.discounts.create, {
+          method: 'POST',
+          body: JSON.stringify(requestBody),
+        });
+      }
 
-    if (editingDiscount) {
-      setDiscounts(discounts.map((d) => (d.id === editingDiscount.id ? newDiscount : d)));
-    } else {
-      setDiscounts([...discounts, newDiscount]);
+      const data = await response.json();
+
+      if (response.ok && data.success !== false) {
+        showToast(editingDiscount ? 'Descuento actualizado' : 'Descuento creado');
+        await fetchDiscounts();
+        closeModal();
+      } else {
+        throw new Error(data.message || 'Error al guardar descuento');
+      }
+    } catch (error) {
+      console.error('Error saving discount:', error);
+      showToast(error.message || 'Error al guardar el descuento', 'error');
+    } finally {
+      setSubmitting(false);
     }
-
-    setSubmitting(false);
-    closeModal();
   };
 
   const handleDelete = async () => {
+    if (!selectedDiscount) return;
+
     setSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setDiscounts(discounts.filter((d) => d.id !== selectedDiscount.id));
-    setSubmitting(false);
-    setIsDeleteModalOpen(false);
-    setSelectedDiscount(null);
+    try {
+      const response = await authFetch(ENDPOINTS.discounts.byId(selectedDiscount._id), {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success !== false) {
+        showToast('Descuento eliminado');
+        await fetchDiscounts();
+        setIsDeleteModalOpen(false);
+        setSelectedDiscount(null);
+      } else {
+        throw new Error(data.message || 'Error al eliminar descuento');
+      }
+    } catch (error) {
+      console.error('Error deleting discount:', error);
+      showToast(error.message || 'Error al eliminar el descuento', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const copyCode = (code) => {
@@ -213,8 +235,8 @@ const Discounts = () => {
       code: '',
       type: 'percentage',
       value: '',
-      business: '',
-      usageLimit: '',
+      businessId: '',
+      maxUses: '',
       startDate: '',
       endDate: '',
       minOrder: '',
@@ -226,13 +248,13 @@ const Discounts = () => {
   const openEditModal = (discount) => {
     setEditingDiscount(discount);
     setFormData({
-      code: discount.code,
-      type: discount.type,
-      value: discount.value.toString(),
-      business: discount.business?.toString() || '',
-      usageLimit: discount.usageLimit?.toString() || '',
-      startDate: discount.startDate,
-      endDate: discount.endDate,
+      code: discount.code || '',
+      type: discount.type || 'percentage',
+      value: discount.value?.toString() || '',
+      businessId: discount.businessId?._id || discount.businessId || '',
+      maxUses: discount.maxUses?.toString() || '',
+      startDate: discount.startDate ? discount.startDate.split('T')[0] : '',
+      endDate: discount.endDate ? discount.endDate.split('T')[0] : '',
       minOrder: discount.minOrder?.toString() || '',
     });
     setFormErrors({});
@@ -251,8 +273,8 @@ const Discounts = () => {
       code: '',
       type: 'percentage',
       value: '',
-      business: '',
-      usageLimit: '',
+      businessId: '',
+      maxUses: '',
       startDate: '',
       endDate: '',
       minOrder: '',
@@ -261,6 +283,7 @@ const Discounts = () => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('es-ES', {
       day: '2-digit',
       month: 'short',
@@ -268,8 +291,28 @@ const Discounts = () => {
     });
   };
 
+  // Get business name for display
+  const getBusinessName = (discount) => {
+    if (!discount.businessId) return 'Todos los negocios';
+    if (typeof discount.businessId === 'object') return discount.businessId.name || 'Negocio';
+    const business = businesses.find(b => b._id === discount.businessId);
+    return business?.name || 'Negocio';
+  };
+
   return (
     <div className="space-y-6">
+      {/* Toast */}
+      {toast.show && (
+        <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg ${
+          toast.type === 'success'
+            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+            : 'bg-red-50 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+        }`}>
+          {toast.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
+          {toast.message}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -340,7 +383,7 @@ const Discounts = () => {
               />
             ) : (
               filteredDiscounts.map((discount) => (
-                <Table.Row key={discount.id}>
+                <Table.Row key={discount._id}>
                   <Table.Cell>
                     <div className="flex items-center gap-2">
                       <code className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg font-mono text-sm font-semibold">
@@ -380,24 +423,24 @@ const Discounts = () => {
                     <div className="flex items-center gap-2">
                       <Building2 size={14} className="text-gray-400" />
                       <span className="text-sm text-gray-600 dark:text-gray-300">
-                        {discount.businessName}
+                        {getBusinessName(discount)}
                       </span>
                     </div>
                   </Table.Cell>
                   <Table.Cell>
                     <div className="text-sm">
                       <span className="font-medium text-gray-900 dark:text-white">
-                        {discount.usageCount}
+                        {discount.usedCount || 0}
                       </span>
                       <span className="text-gray-500">
-                        {discount.usageLimit ? ` / ${discount.usageLimit}` : ' / ∞'}
+                        {discount.maxUses ? ` / ${discount.maxUses}` : ' / ∞'}
                       </span>
                     </div>
-                    {discount.usageLimit && (
+                    {discount.maxUses && (
                       <div className="w-20 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full mt-1">
                         <div
                           className="h-1.5 bg-indigo-500 rounded-full"
-                          style={{ width: `${Math.min((discount.usageCount / discount.usageLimit) * 100, 100)}%` }}
+                          style={{ width: `${Math.min(((discount.usedCount || 0) / discount.maxUses) * 100, 100)}%` }}
                         />
                       </div>
                     )}
@@ -496,9 +539,9 @@ const Discounts = () => {
 
           <Select
             label="Aplicar a"
-            options={mockBusinesses}
-            value={formData.business}
-            onChange={(e) => setFormData({ ...formData, business: e.target.value })}
+            options={businessOptions}
+            value={formData.businessId}
+            onChange={(e) => setFormData({ ...formData, businessId: e.target.value })}
           />
 
           <div className="grid grid-cols-2 gap-4">
@@ -506,8 +549,8 @@ const Discounts = () => {
               label="Limite de usos (opcional)"
               type="number"
               placeholder="Sin limite"
-              value={formData.usageLimit}
-              onChange={(e) => setFormData({ ...formData, usageLimit: e.target.value })}
+              value={formData.maxUses}
+              onChange={(e) => setFormData({ ...formData, maxUses: e.target.value })}
             />
             <Input
               label="Orden minima (opcional)"

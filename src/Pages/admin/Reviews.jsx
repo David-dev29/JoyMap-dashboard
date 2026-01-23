@@ -9,101 +9,11 @@ import {
   Building2,
   Calendar,
   MessageSquare,
+  Check,
+  AlertCircle,
 } from 'lucide-react';
 import { Card, Button, Input, Select, Badge, Table, Modal, Avatar, Dropdown } from '../../components/ui';
-
-// Mock data
-const mockReviews = [
-  {
-    id: 1,
-    customer: { name: 'Juan Perez', email: 'juan@email.com' },
-    business: { id: 1, name: 'El Buen Sabor' },
-    rating: 5,
-    comment: 'Excelente comida y muy rapido el servicio. Los tacos estaban deliciosos y la salsa verde increible. Definitivamente volvere a pedir.',
-    date: '2024-01-21',
-    status: 'visible',
-    orderId: '1001',
-  },
-  {
-    id: 2,
-    customer: { name: 'Maria Garcia', email: 'maria@email.com' },
-    business: { id: 2, name: 'Pizza Express' },
-    rating: 4,
-    comment: 'Buena pizza, aunque tardo un poco mas de lo esperado. El sabor estuvo muy bien.',
-    date: '2024-01-20',
-    status: 'visible',
-    orderId: '998',
-  },
-  {
-    id: 3,
-    customer: { name: 'Carlos Lopez', email: 'carlos@email.com' },
-    business: { id: 3, name: 'Sushi Master' },
-    rating: 2,
-    comment: 'El sushi llego frio y algunos rollos estaban aplastados. No fue una buena experiencia.',
-    date: '2024-01-19',
-    status: 'visible',
-    orderId: '995',
-  },
-  {
-    id: 4,
-    customer: { name: 'Ana Martinez', email: 'ana@email.com' },
-    business: { id: 1, name: 'El Buen Sabor' },
-    rating: 5,
-    comment: 'Todo perfecto! La mejor comida mexicana de la ciudad.',
-    date: '2024-01-19',
-    status: 'visible',
-    orderId: '990',
-  },
-  {
-    id: 5,
-    customer: { name: 'Pedro Sanchez', email: 'pedro@email.com' },
-    business: { id: 4, name: 'Cafe Central' },
-    rating: 3,
-    comment: 'El cafe estaba bien pero las galletas un poco secas.',
-    date: '2024-01-18',
-    status: 'hidden',
-    orderId: '985',
-  },
-  {
-    id: 6,
-    customer: { name: 'Laura Torres', email: 'laura@email.com' },
-    business: { id: 2, name: 'Pizza Express' },
-    rating: 5,
-    comment: 'La mejor pizza de pepperoni! Super rapidos en la entrega.',
-    date: '2024-01-18',
-    status: 'visible',
-    orderId: '982',
-  },
-  {
-    id: 7,
-    customer: { name: 'Diego Ruiz', email: 'diego@email.com' },
-    business: { id: 5, name: 'Taqueria Don Jose' },
-    rating: 1,
-    comment: 'Pesimo servicio, la comida llego muy tarde y fria. No lo recomiendo.',
-    date: '2024-01-17',
-    status: 'hidden',
-    orderId: '978',
-  },
-  {
-    id: 8,
-    customer: { name: 'Sofia Morales', email: 'sofia@email.com' },
-    business: { id: 3, name: 'Sushi Master' },
-    rating: 4,
-    comment: 'Muy buen sushi, fresco y bien presentado. Solo que las porciones son un poco pequenas.',
-    date: '2024-01-17',
-    status: 'visible',
-    orderId: '975',
-  },
-];
-
-const mockBusinesses = [
-  { value: '', label: 'Todos los negocios' },
-  { value: '1', label: 'El Buen Sabor' },
-  { value: '2', label: 'Pizza Express' },
-  { value: '3', label: 'Sushi Master' },
-  { value: '4', label: 'Cafe Central' },
-  { value: '5', label: 'Taqueria Don Jose' },
-];
+import { authFetch, ENDPOINTS } from '../../config/api';
 
 const ratingOptions = [
   { value: '', label: 'Todas las calificaciones' },
@@ -116,6 +26,7 @@ const ratingOptions = [
 
 const Reviews = () => {
   const [reviews, setReviews] = useState([]);
+  const [businesses, setBusinesses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [businessFilter, setBusinessFilter] = useState('');
@@ -128,28 +39,80 @@ const Reviews = () => {
   const [selectedReview, setSelectedReview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Toast state
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+  };
+
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setReviews(mockReviews);
-      setLoading(false);
-    }, 500);
+    fetchReviews();
+    fetchBusinesses();
   }, []);
+
+  const fetchReviews = async () => {
+    setLoading(true);
+    try {
+      const response = await authFetch(ENDPOINTS.reviews.base);
+      const data = await response.json();
+
+      if (response.ok) {
+        const reviewsList = data.reviews || data.response || data.data || (Array.isArray(data) ? data : []);
+        setReviews(Array.isArray(reviewsList) ? reviewsList : []);
+      } else {
+        throw new Error(data.message || 'Error al cargar resenas');
+      }
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+      showToast('Error al cargar las resenas', 'error');
+      setReviews([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchBusinesses = async () => {
+    try {
+      const response = await authFetch(ENDPOINTS.businesses.all);
+      const data = await response.json();
+
+      if (response.ok) {
+        const businessList = data.businesses || data.response || data.data || (Array.isArray(data) ? data : []);
+        setBusinesses(Array.isArray(businessList) ? businessList : []);
+      }
+    } catch (error) {
+      console.error('Error fetching businesses:', error);
+    }
+  };
+
+  // Build business options for filter
+  const businessOptions = [
+    { value: '', label: 'Todos los negocios' },
+    ...businesses.map(b => ({
+      value: b._id,
+      label: b.name,
+    })),
+  ];
 
   // Filter reviews
   const filteredReviews = reviews.filter((review) => {
+    const customerName = review.customerId?.name || review.customer?.name || '';
     const matchesSearch =
-      review.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      review.comment.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesBusiness = !businessFilter || review.business.id.toString() === businessFilter;
-    const matchesRating = !ratingFilter || review.rating.toString() === ratingFilter;
-    const matchesStatus = !statusFilter || review.status === statusFilter;
+      customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (review.comment || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const businessId = review.businessId?._id || review.businessId || '';
+    const matchesBusiness = !businessFilter || businessId === businessFilter;
+    const matchesRating = !ratingFilter || review.rating?.toString() === ratingFilter;
+    const reviewStatus = review.isVisible === false ? 'hidden' : 'visible';
+    const matchesStatus = !statusFilter || reviewStatus === statusFilter;
     return matchesSearch && matchesBusiness && matchesRating && matchesStatus;
   });
 
   // Stats
   const avgRating = reviews.length > 0
-    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+    ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1)
     : 0;
   const ratingCounts = {
     5: reviews.filter((r) => r.rating === 5).length,
@@ -161,20 +124,52 @@ const Reviews = () => {
 
   // Handlers
   const toggleVisibility = async (review) => {
-    setReviews(reviews.map((r) =>
-      r.id === review.id
-        ? { ...r, status: r.status === 'visible' ? 'hidden' : 'visible' }
-        : r
-    ));
+    const newVisibility = review.isVisible === false ? true : false;
+    try {
+      const response = await authFetch(ENDPOINTS.reviews.byId(review._id), {
+        method: 'PUT',
+        body: JSON.stringify({ isVisible: newVisibility }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success !== false) {
+        showToast(newVisibility ? 'Resena visible' : 'Resena oculta');
+        await fetchReviews();
+      } else {
+        throw new Error(data.message || 'Error al cambiar visibilidad');
+      }
+    } catch (error) {
+      console.error('Error toggling visibility:', error);
+      showToast(error.message || 'Error al cambiar visibilidad', 'error');
+    }
   };
 
   const handleDelete = async () => {
+    if (!selectedReview) return;
+
     setSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setReviews(reviews.filter((r) => r.id !== selectedReview.id));
-    setSubmitting(false);
-    setIsDeleteModalOpen(false);
-    setSelectedReview(null);
+    try {
+      const response = await authFetch(ENDPOINTS.reviews.byId(selectedReview._id), {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success !== false) {
+        showToast('Resena eliminada');
+        await fetchReviews();
+        setIsDeleteModalOpen(false);
+        setSelectedReview(null);
+      } else {
+        throw new Error(data.message || 'Error al eliminar resena');
+      }
+    } catch (error) {
+      console.error('Error deleting review:', error);
+      showToast(error.message || 'Error al eliminar la resena', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const openViewModal = (review) => {
@@ -188,11 +183,32 @@ const Reviews = () => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('es-ES', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
     });
+  };
+
+  // Get customer name
+  const getCustomerName = (review) => {
+    return review.customerId?.name || review.customer?.name || 'Cliente';
+  };
+
+  // Get customer email
+  const getCustomerEmail = (review) => {
+    return review.customerId?.email || review.customer?.email || '';
+  };
+
+  // Get business name
+  const getBusinessName = (review) => {
+    return review.businessId?.name || review.business?.name || 'Negocio';
+  };
+
+  // Get visibility status
+  const getVisibilityStatus = (review) => {
+    return review.isVisible === false ? 'hidden' : 'visible';
   };
 
   const StarRating = ({ rating, size = 16 }) => (
@@ -209,6 +225,18 @@ const Reviews = () => {
 
   return (
     <div className="space-y-6">
+      {/* Toast */}
+      {toast.show && (
+        <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg ${
+          toast.type === 'success'
+            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+            : 'bg-red-50 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+        }`}>
+          {toast.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
+          {toast.message}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -285,7 +313,7 @@ const Reviews = () => {
           </div>
           <div className="flex flex-wrap gap-3">
             <Select
-              options={mockBusinesses}
+              options={businessOptions}
               value={businessFilter}
               onChange={(e) => setBusinessFilter(e.target.value)}
               placeholder=""
@@ -340,12 +368,12 @@ const Reviews = () => {
               />
             ) : (
               filteredReviews.map((review) => (
-                <Table.Row key={review.id}>
+                <Table.Row key={review._id}>
                   <Table.Cell>
                     <div className="flex items-center gap-3">
-                      <Avatar name={review.customer.name} size="sm" />
+                      <Avatar name={getCustomerName(review)} size="sm" />
                       <span className="font-medium text-gray-900 dark:text-white">
-                        {review.customer.name}
+                        {getCustomerName(review)}
                       </span>
                     </div>
                   </Table.Cell>
@@ -353,7 +381,7 @@ const Reviews = () => {
                     <div className="flex items-center gap-2">
                       <Building2 size={14} className="text-gray-400" />
                       <span className="text-sm text-gray-600 dark:text-gray-300">
-                        {review.business.name}
+                        {getBusinessName(review)}
                       </span>
                     </div>
                   </Table.Cell>
@@ -362,18 +390,18 @@ const Reviews = () => {
                   </Table.Cell>
                   <Table.Cell>
                     <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 max-w-xs">
-                      {review.comment}
+                      {review.comment || '-'}
                     </p>
                   </Table.Cell>
                   <Table.Cell>
-                    <span className="text-sm text-gray-500">{formatDate(review.date)}</span>
+                    <span className="text-sm text-gray-500">{formatDate(review.createdAt)}</span>
                   </Table.Cell>
                   <Table.Cell>
                     <Badge
-                      variant={review.status === 'visible' ? 'success' : 'default'}
+                      variant={getVisibilityStatus(review) === 'visible' ? 'success' : 'default'}
                       size="sm"
                     >
-                      {review.status === 'visible' ? 'Visible' : 'Oculta'}
+                      {getVisibilityStatus(review) === 'visible' ? 'Visible' : 'Oculta'}
                     </Badge>
                   </Table.Cell>
                   <Table.Cell align="right">
@@ -397,13 +425,13 @@ const Reviews = () => {
                             Ver completa
                           </Dropdown.Item>
                           <Dropdown.Item
-                            icon={review.status === 'visible' ? <EyeOff size={16} /> : <Eye size={16} />}
+                            icon={getVisibilityStatus(review) === 'visible' ? <EyeOff size={16} /> : <Eye size={16} />}
                             onClick={() => {
                               close();
                               toggleVisibility(review);
                             }}
                           >
-                            {review.status === 'visible' ? 'Ocultar' : 'Mostrar'}
+                            {getVisibilityStatus(review) === 'visible' ? 'Ocultar' : 'Mostrar'}
                           </Dropdown.Item>
                           <Dropdown.Divider />
                           <Dropdown.Item
@@ -440,16 +468,16 @@ const Reviews = () => {
         {selectedReview && (
           <div className="space-y-4">
             <div className="flex items-start gap-4">
-              <Avatar name={selectedReview.customer.name} size="lg" />
+              <Avatar name={getCustomerName(selectedReview)} size="lg" />
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900 dark:text-white">
-                  {selectedReview.customer.name}
+                  {getCustomerName(selectedReview)}
                 </h3>
-                <p className="text-sm text-gray-500">{selectedReview.customer.email}</p>
+                <p className="text-sm text-gray-500">{getCustomerEmail(selectedReview)}</p>
                 <div className="flex items-center gap-2 mt-2">
                   <StarRating rating={selectedReview.rating} size={18} />
-                  <Badge variant={selectedReview.status === 'visible' ? 'success' : 'default'} size="sm">
-                    {selectedReview.status === 'visible' ? 'Visible' : 'Oculta'}
+                  <Badge variant={getVisibilityStatus(selectedReview) === 'visible' ? 'success' : 'default'} size="sm">
+                    {getVisibilityStatus(selectedReview) === 'visible' ? 'Visible' : 'Oculta'}
                   </Badge>
                 </div>
               </div>
@@ -457,7 +485,7 @@ const Reviews = () => {
 
             <div className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
               <p className="text-gray-700 dark:text-gray-200 italic">
-                "{selectedReview.comment}"
+                "{selectedReview.comment || 'Sin comentario'}"
               </p>
             </div>
 
@@ -465,19 +493,13 @@ const Reviews = () => {
               <div>
                 <p className="text-sm text-gray-500">Negocio</p>
                 <p className="font-medium text-gray-900 dark:text-white">
-                  {selectedReview.business.name}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Orden</p>
-                <p className="font-medium text-gray-900 dark:text-white">
-                  #{selectedReview.orderId}
+                  {getBusinessName(selectedReview)}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Fecha</p>
                 <p className="font-medium text-gray-900 dark:text-white">
-                  {formatDate(selectedReview.date)}
+                  {formatDate(selectedReview.createdAt)}
                 </p>
               </div>
             </div>
@@ -494,15 +516,15 @@ const Reviews = () => {
             Cerrar
           </Button>
           <Button
-            variant={selectedReview?.status === 'visible' ? 'secondary' : 'primary'}
-            leftIcon={selectedReview?.status === 'visible' ? <EyeOff size={16} /> : <Eye size={16} />}
+            variant={getVisibilityStatus(selectedReview) === 'visible' ? 'secondary' : 'primary'}
+            leftIcon={getVisibilityStatus(selectedReview) === 'visible' ? <EyeOff size={16} /> : <Eye size={16} />}
             onClick={() => {
               toggleVisibility(selectedReview);
               setIsViewModalOpen(false);
               setSelectedReview(null);
             }}
           >
-            {selectedReview?.status === 'visible' ? 'Ocultar' : 'Mostrar'}
+            {getVisibilityStatus(selectedReview) === 'visible' ? 'Ocultar' : 'Mostrar'}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -522,7 +544,7 @@ const Reviews = () => {
             <Trash2 size={28} className="text-red-600 dark:text-red-400" />
           </div>
           <p className="text-gray-600 dark:text-gray-300">
-            Estas seguro de eliminar esta resena de <strong>{selectedReview?.customer.name}</strong>?
+            Estas seguro de eliminar esta resena de <strong>{getCustomerName(selectedReview)}</strong>?
           </p>
           <p className="text-sm text-gray-500 mt-2">
             Esta accion no se puede deshacer.

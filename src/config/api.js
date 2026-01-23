@@ -95,6 +95,19 @@ export const ENDPOINTS = {
     base: `${API_BASE_URL}/subcategories`,
   },
 
+  // Descuentos
+  discounts: {
+    base: `${API_BASE_URL}/discounts`,
+    create: `${API_BASE_URL}/discounts/create`,
+    byId: (id) => `${API_BASE_URL}/discounts/${id}`,
+  },
+
+  // Reseñas
+  reviews: {
+    base: `${API_BASE_URL}/reviews`,
+    byId: (id) => `${API_BASE_URL}/reviews/${id}`,
+  },
+
   // Autenticación
   auth: {
     login: `${API_BASE_URL}/auth/login`,
