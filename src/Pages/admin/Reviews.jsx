@@ -55,11 +55,20 @@ const Reviews = () => {
   const fetchReviews = async () => {
     setLoading(true);
     try {
+      console.log('=== DEBUG Reviews ===');
+      console.log('Fetching reviews from:', ENDPOINTS.reviews.base);
+
       const response = await authFetch(ENDPOINTS.reviews.base);
       const data = await response.json();
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      console.log('API Response:', data);
+
       if (response.ok) {
         const reviewsList = data.reviews || data.response || data.data || (Array.isArray(data) ? data : []);
+        console.log('Reviews extracted:', reviewsList);
+        console.log('Is Array:', Array.isArray(reviewsList));
         setReviews(Array.isArray(reviewsList) ? reviewsList : []);
       } else {
         throw new Error(data.message || 'Error al cargar resenas');
@@ -505,28 +514,30 @@ const Reviews = () => {
             </div>
           </div>
         )}
-        <Modal.Footer>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setIsViewModalOpen(false);
-              setSelectedReview(null);
-            }}
-          >
-            Cerrar
-          </Button>
-          <Button
-            variant={getVisibilityStatus(selectedReview) === 'visible' ? 'secondary' : 'primary'}
-            leftIcon={getVisibilityStatus(selectedReview) === 'visible' ? <EyeOff size={16} /> : <Eye size={16} />}
-            onClick={() => {
-              toggleVisibility(selectedReview);
-              setIsViewModalOpen(false);
-              setSelectedReview(null);
-            }}
-          >
-            {getVisibilityStatus(selectedReview) === 'visible' ? 'Ocultar' : 'Mostrar'}
-          </Button>
-        </Modal.Footer>
+        {selectedReview && (
+          <Modal.Footer>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setIsViewModalOpen(false);
+                setSelectedReview(null);
+              }}
+            >
+              Cerrar
+            </Button>
+            <Button
+              variant={getVisibilityStatus(selectedReview) === 'visible' ? 'secondary' : 'primary'}
+              leftIcon={getVisibilityStatus(selectedReview) === 'visible' ? <EyeOff size={16} /> : <Eye size={16} />}
+              onClick={() => {
+                toggleVisibility(selectedReview);
+                setIsViewModalOpen(false);
+                setSelectedReview(null);
+              }}
+            >
+              {getVisibilityStatus(selectedReview) === 'visible' ? 'Ocultar' : 'Mostrar'}
+            </Button>
+          </Modal.Footer>
+        )}
       </Modal>
 
       {/* Delete Confirmation Modal */}
@@ -539,28 +550,32 @@ const Reviews = () => {
         title="Eliminar Resena"
         size="sm"
       >
-        <div className="text-center py-4">
-          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Trash2 size={28} className="text-red-600 dark:text-red-400" />
-          </div>
-          <p className="text-gray-600 dark:text-gray-300">
-            Estas seguro de eliminar esta resena de <strong>{getCustomerName(selectedReview)}</strong>?
-          </p>
-          <p className="text-sm text-gray-500 mt-2">
-            Esta accion no se puede deshacer.
-          </p>
-        </div>
-        <Modal.Footer>
-          <Button variant="ghost" onClick={() => {
-            setIsDeleteModalOpen(false);
-            setSelectedReview(null);
-          }}>
-            Cancelar
-          </Button>
-          <Button variant="danger" onClick={handleDelete} loading={submitting}>
-            Eliminar
-          </Button>
-        </Modal.Footer>
+        {selectedReview && (
+          <>
+            <div className="text-center py-4">
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={28} className="text-red-600 dark:text-red-400" />
+              </div>
+              <p className="text-gray-600 dark:text-gray-300">
+                Estas seguro de eliminar esta resena de <strong>{getCustomerName(selectedReview)}</strong>?
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Esta accion no se puede deshacer.
+              </p>
+            </div>
+            <Modal.Footer>
+              <Button variant="ghost" onClick={() => {
+                setIsDeleteModalOpen(false);
+                setSelectedReview(null);
+              }}>
+                Cancelar
+              </Button>
+              <Button variant="danger" onClick={handleDelete} loading={submitting}>
+                Eliminar
+              </Button>
+            </Modal.Footer>
+          </>
+        )}
       </Modal>
     </div>
   );

@@ -60,15 +60,39 @@ const ProductCategories = () => {
 
       try {
         setLoading(true);
-        const response = await getBusinessCategories(selectedBusiness._id, 'products');
-        const categoriesData = response.categories || response.data || response || [];
+        setError('');
 
-        // Sort by order
-        categoriesData.sort((a, b) => (a.order || 0) - (b.order || 0));
-        setCategories(categoriesData);
+        console.log('=== DEBUG ProductCategories ===');
+        console.log('Selected Business:', selectedBusiness._id, selectedBusiness.name);
+
+        const response = await getBusinessCategories(selectedBusiness._id, 'products');
+        console.log('API Response:', response);
+
+        // Handle different response formats
+        let categoriesData = [];
+        if (response.categories) {
+          categoriesData = response.categories;
+        } else if (response.data) {
+          categoriesData = response.data;
+        } else if (Array.isArray(response)) {
+          categoriesData = response;
+        }
+
+        console.log('Categories extracted:', categoriesData);
+        console.log('Is Array:', Array.isArray(categoriesData));
+
+        // Ensure it's an array before sorting
+        if (Array.isArray(categoriesData)) {
+          categoriesData.sort((a, b) => (a.order || 0) - (b.order || 0));
+          setCategories(categoriesData);
+        } else {
+          console.warn('categoriesData is not an array:', categoriesData);
+          setCategories([]);
+        }
       } catch (err) {
         console.error('Error loading categories:', err);
         setError('Error al cargar las categorias');
+        setCategories([]);
       } finally {
         setLoading(false);
       }
@@ -182,12 +206,21 @@ const ProductCategories = () => {
 
       const data = await response.json();
 
-      if (data.success || data.category) {
+      if (data.success !== false || data.category) {
         // Reload categories
         const catResponse = await getBusinessCategories(selectedBusiness._id, 'products');
-        const categoriesData = catResponse.categories || catResponse.data || catResponse || [];
-        categoriesData.sort((a, b) => (a.order || 0) - (b.order || 0));
-        setCategories(categoriesData);
+        let categoriesData = [];
+        if (catResponse.categories) {
+          categoriesData = catResponse.categories;
+        } else if (catResponse.data) {
+          categoriesData = catResponse.data;
+        } else if (Array.isArray(catResponse)) {
+          categoriesData = catResponse;
+        }
+        if (Array.isArray(categoriesData)) {
+          categoriesData.sort((a, b) => (a.order || 0) - (b.order || 0));
+          setCategories(categoriesData);
+        }
         setIsModalOpen(false);
       } else {
         throw new Error(data.message || 'Error al guardar');
@@ -219,6 +252,7 @@ const ProductCategories = () => {
   };
 
   const getProductCount = (category) => {
+    if (!category) return 0;
     return category.products?.length || 0;
   };
 
