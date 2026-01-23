@@ -78,6 +78,18 @@ export const ENDPOINTS = {
     base: `${API_BASE_URL}/business-categories`,
   },
 
+  // Usuarios
+  users: {
+    base: `${API_BASE_URL}/users`,
+    create: `${API_BASE_URL}/users/create`,
+    byId: (id) => `${API_BASE_URL}/users/${id}`,
+  },
+
+  // Admin
+  admin: {
+    assignBusiness: `${API_BASE_URL}/admin/assign-business`,
+  },
+
   // Subcategorías
   subcategories: {
     base: `${API_BASE_URL}/subcategories`,

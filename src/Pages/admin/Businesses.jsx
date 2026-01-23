@@ -3,7 +3,6 @@ import {
   Building2,
   Plus,
   Search,
-  Filter,
   MoreHorizontal,
   Eye,
   Edit2,
@@ -13,33 +12,44 @@ import {
   Store,
   Truck,
   UtensilsCrossed,
+  Check,
   X,
-  Upload,
+  AlertCircle,
 } from 'lucide-react';
 import { Card, Button, Input, Select, Badge, Table, Modal, Avatar, Dropdown } from '../../components/ui';
-import api from '../../config/api';
+import { authFetch, ENDPOINTS } from '../../config/api';
 
 const categoryIcons = {
   food: UtensilsCrossed,
+  comida: UtensilsCrossed,
   store: Store,
+  tienda: Store,
   delivery: Truck,
+  envio: Truck,
 };
 
 const categoryLabels = {
   food: 'Comida',
+  comida: 'Comida',
   store: 'Tienda',
+  tienda: 'Tienda',
   delivery: 'Envio',
+  envio: 'Envio',
 };
 
 const categoryColors = {
   food: 'warning',
+  comida: 'warning',
   store: 'primary',
+  tienda: 'primary',
   delivery: 'info',
+  envio: 'info',
 };
 
 const Businesses = () => {
   // State
   const [businesses, setBusinesses] = useState([]);
+  const [businessCategories, setBusinessCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -50,74 +60,108 @@ const Businesses = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAssignOwnerModalOpen, setIsAssignOwnerModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedBusiness, setSelectedBusiness] = useState(null);
   const [availableOwners, setAvailableOwners] = useState([]);
 
   // Form state
   const [formData, setFormData] = useState({
     name: '',
-    category: 'food',
+    category: '',
     description: '',
     address: '',
     phone: '',
     email: '',
-    logo: '',
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  // Fetch businesses
+  // Toast state
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+  };
+
+  // Fetch businesses and categories
   useEffect(() => {
     fetchBusinesses();
+    fetchBusinessCategories();
   }, []);
 
   const fetchBusinesses = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/businesses');
-      setBusinesses(response.data.businesses || response.data || []);
+      const response = await authFetch(ENDPOINTS.businesses.all);
+      const data = await response.json();
+
+      if (data.success !== false) {
+        const businessList = data.businesses || data.data || data || [];
+        setBusinesses(Array.isArray(businessList) ? businessList : []);
+      } else {
+        throw new Error(data.message || 'Error al cargar negocios');
+      }
     } catch (error) {
       console.error('Error fetching businesses:', error);
-      // Mock data for development
-      setBusinesses([
-        { id: 1, name: 'El Buen Sabor', category: 'food', owner: { name: 'Juan Perez', email: 'juan@email.com' }, status: 'active', logo: null },
-        { id: 2, name: 'Pizza Express', category: 'food', owner: { name: 'Maria Garcia', email: 'maria@email.com' }, status: 'active', logo: null },
-        { id: 3, name: 'Tienda Central', category: 'store', owner: null, status: 'inactive', logo: null },
-        { id: 4, name: 'Envios Rapidos', category: 'delivery', owner: { name: 'Carlos Lopez', email: 'carlos@email.com' }, status: 'active', logo: null },
-        { id: 5, name: 'Sushi Master', category: 'food', owner: null, status: 'active', logo: null },
-      ]);
+      showToast('Error al cargar los negocios', 'error');
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchBusinessCategories = async () => {
+    try {
+      const response = await authFetch(ENDPOINTS.businessCategories.base);
+      const data = await response.json();
+      const categories = data.categories || data.data || data || [];
+      setBusinessCategories(Array.isArray(categories) ? categories : []);
+    } catch (error) {
+      console.error('Error fetching business categories:', error);
+    }
+  };
+
   const fetchAvailableOwners = async () => {
     try {
-      const response = await api.get('/users?role=business_owner&unassigned=true');
-      setAvailableOwners(response.data.users || response.data || []);
+      const response = await authFetch(`${ENDPOINTS.users.base}?role=business_owner`);
+      const data = await response.json();
+      const users = data.users || data.data || data || [];
+      // Filter users that don't have a business assigned
+      const available = users.filter(u => !u.businessId && !u.business);
+      setAvailableOwners(Array.isArray(available) ? available : []);
     } catch (error) {
-      // Mock data
-      setAvailableOwners([
-        { id: 1, name: 'Pedro Sanchez', email: 'pedro@email.com' },
-        { id: 2, name: 'Ana Martinez', email: 'ana@email.com' },
-        { id: 3, name: 'Luis Rodriguez', email: 'luis@email.com' },
-      ]);
+      console.error('Error fetching available owners:', error);
+      setAvailableOwners([]);
     }
   };
 
   // Filter businesses
   const filteredBusinesses = businesses.filter((business) => {
-    const matchesSearch = business.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !categoryFilter || business.category === categoryFilter;
-    const matchesStatus = !statusFilter || business.status === statusFilter;
+    const matchesSearch = business.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const businessCategory = business.category?.slug || business.category?.name || business.type || '';
+    const matchesCategory = !categoryFilter || businessCategory.toLowerCase() === categoryFilter.toLowerCase();
+    const businessStatus = business.isOpen !== undefined ? (business.isOpen ? 'active' : 'inactive') : business.status;
+    const matchesStatus = !statusFilter || businessStatus === statusFilter;
     return matchesSearch && matchesCategory && matchesStatus;
   });
+
+  // Get business category for display
+  const getBusinessCategory = (business) => {
+    return business.category?.slug || business.category?.name || business.type || 'store';
+  };
+
+  // Get business status
+  const getBusinessStatus = (business) => {
+    if (business.isOpen !== undefined) {
+      return business.isOpen ? 'active' : 'inactive';
+    }
+    return business.status || 'active';
+  };
 
   // Handlers
   const handleCreateBusiness = async () => {
     setFormErrors({});
 
-    // Validation
     const errors = {};
     if (!formData.name.trim()) errors.name = 'El nombre es requerido';
     if (!formData.category) errors.category = 'La categoria es requerida';
@@ -129,22 +173,31 @@ const Businesses = () => {
 
     setSubmitting(true);
     try {
-      await api.post('/businesses/create', formData);
-      await fetchBusinesses();
-      setIsCreateModalOpen(false);
-      resetForm();
+      const response = await authFetch(ENDPOINTS.businesses.create, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: formData.name,
+          categoryId: formData.category,
+          description: formData.description,
+          address: formData.address,
+          phone: formData.phone,
+          email: formData.email,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success !== false) {
+        showToast('Negocio creado exitosamente');
+        await fetchBusinesses();
+        setIsCreateModalOpen(false);
+        resetForm();
+      } else {
+        throw new Error(data.message || 'Error al crear negocio');
+      }
     } catch (error) {
       console.error('Error creating business:', error);
-      // For development, add to local state
-      const newBusiness = {
-        id: Date.now(),
-        ...formData,
-        status: 'active',
-        owner: null,
-      };
-      setBusinesses([...businesses, newBusiness]);
-      setIsCreateModalOpen(false);
-      resetForm();
+      showToast(error.message || 'Error al crear el negocio', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -163,19 +216,59 @@ const Businesses = () => {
 
     setSubmitting(true);
     try {
-      await api.put(`/businesses/${selectedBusiness.id}`, formData);
-      await fetchBusinesses();
-      setIsEditModalOpen(false);
-      setSelectedBusiness(null);
-      resetForm();
+      const response = await authFetch(ENDPOINTS.businesses.byId(selectedBusiness._id), {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: formData.name,
+          categoryId: formData.category,
+          description: formData.description,
+          address: formData.address,
+          phone: formData.phone,
+          email: formData.email,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success !== false) {
+        showToast('Negocio actualizado exitosamente');
+        await fetchBusinesses();
+        setIsEditModalOpen(false);
+        setSelectedBusiness(null);
+        resetForm();
+      } else {
+        throw new Error(data.message || 'Error al actualizar negocio');
+      }
     } catch (error) {
-      // Update local state
-      setBusinesses(businesses.map(b =>
-        b.id === selectedBusiness.id ? { ...b, ...formData } : b
-      ));
-      setIsEditModalOpen(false);
-      setSelectedBusiness(null);
-      resetForm();
+      console.error('Error updating business:', error);
+      showToast(error.message || 'Error al actualizar el negocio', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteBusiness = async () => {
+    if (!selectedBusiness) return;
+
+    setSubmitting(true);
+    try {
+      const response = await authFetch(ENDPOINTS.businesses.byId(selectedBusiness._id), {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success !== false) {
+        showToast('Negocio eliminado exitosamente');
+        await fetchBusinesses();
+        setIsDeleteModalOpen(false);
+        setSelectedBusiness(null);
+      } else {
+        throw new Error(data.message || 'Error al eliminar negocio');
+      }
+    } catch (error) {
+      console.error('Error deleting business:', error);
+      showToast(error.message || 'Error al eliminar el negocio', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -184,45 +277,62 @@ const Businesses = () => {
   const handleAssignOwner = async (ownerId) => {
     setSubmitting(true);
     try {
-      await api.post('/admin/assign-business', {
-        businessId: selectedBusiness.id,
-        userId: ownerId,
+      const response = await authFetch(ENDPOINTS.admin.assignBusiness, {
+        method: 'POST',
+        body: JSON.stringify({
+          businessId: selectedBusiness._id,
+          userId: ownerId,
+        }),
       });
-      await fetchBusinesses();
+
+      const data = await response.json();
+
+      if (response.ok && data.success !== false) {
+        showToast('Owner asignado exitosamente');
+        await fetchBusinesses();
+        setIsAssignOwnerModalOpen(false);
+        setSelectedBusiness(null);
+      } else {
+        throw new Error(data.message || 'Error al asignar owner');
+      }
     } catch (error) {
-      // Update local state
-      const owner = availableOwners.find(o => o.id === ownerId);
-      setBusinesses(businesses.map(b =>
-        b.id === selectedBusiness.id ? { ...b, owner } : b
-      ));
+      console.error('Error assigning owner:', error);
+      showToast(error.message || 'Error al asignar owner', 'error');
     } finally {
       setSubmitting(false);
-      setIsAssignOwnerModalOpen(false);
-      setSelectedBusiness(null);
     }
   };
 
   const handleToggleStatus = async (business) => {
-    const newStatus = business.status === 'active' ? 'inactive' : 'active';
+    const newStatus = getBusinessStatus(business) === 'active' ? false : true;
     try {
-      await api.put(`/businesses/${business.id}`, { status: newStatus });
-      await fetchBusinesses();
+      const response = await authFetch(ENDPOINTS.businesses.byId(business._id), {
+        method: 'PUT',
+        body: JSON.stringify({ isOpen: newStatus }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success !== false) {
+        showToast(`Negocio ${newStatus ? 'activado' : 'desactivado'}`);
+        await fetchBusinesses();
+      } else {
+        throw new Error(data.message || 'Error al cambiar estado');
+      }
     } catch (error) {
-      setBusinesses(businesses.map(b =>
-        b.id === business.id ? { ...b, status: newStatus } : b
-      ));
+      console.error('Error toggling status:', error);
+      showToast('Error al cambiar el estado', 'error');
     }
   };
 
   const resetForm = () => {
     setFormData({
       name: '',
-      category: 'food',
+      category: '',
       description: '',
       address: '',
       phone: '',
       email: '',
-      logo: '',
     });
     setFormErrors({});
   };
@@ -230,13 +340,12 @@ const Businesses = () => {
   const openEditModal = (business) => {
     setSelectedBusiness(business);
     setFormData({
-      name: business.name,
-      category: business.category,
+      name: business.name || '',
+      category: business.category?._id || business.categoryId || '',
       description: business.description || '',
       address: business.address || '',
       phone: business.phone || '',
       email: business.email || '',
-      logo: business.logo || '',
     });
     setIsEditModalOpen(true);
   };
@@ -252,13 +361,39 @@ const Businesses = () => {
     setIsViewModalOpen(true);
   };
 
+  const openDeleteModal = (business) => {
+    setSelectedBusiness(business);
+    setIsDeleteModalOpen(true);
+  };
+
   const CategoryIcon = ({ category }) => {
     const Icon = categoryIcons[category] || Store;
     return <Icon size={16} />;
   };
 
+  // Build category options for filter
+  const categoryOptions = [
+    { value: '', label: 'Todas las categorias' },
+    ...businessCategories.map(cat => ({
+      value: cat.slug || cat.name,
+      label: cat.name,
+    })),
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-hidden max-w-full">
+      {/* Toast */}
+      {toast.show && (
+        <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg ${
+          toast.type === 'success'
+            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+            : 'bg-red-50 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+        }`}>
+          {toast.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
+          {toast.message}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -293,12 +428,7 @@ const Businesses = () => {
           </div>
           <div className="flex gap-3">
             <Select
-              options={[
-                { value: '', label: 'Todas las categorias' },
-                { value: 'food', label: 'Comida' },
-                { value: 'store', label: 'Tienda' },
-                { value: 'delivery', label: 'Envio' },
-              ]}
+              options={categoryOptions}
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
               placeholder=""
@@ -322,139 +452,156 @@ const Businesses = () => {
       </Card>
 
       {/* Table */}
-      <Card padding="none">
-        <Table>
-          <Table.Head>
-            <Table.Row hover={false}>
-              <Table.Header>Negocio</Table.Header>
-              <Table.Header>Categoria</Table.Header>
-              <Table.Header>Owner Asignado</Table.Header>
-              <Table.Header>Estado</Table.Header>
-              <Table.Header align="right">Acciones</Table.Header>
-            </Table.Row>
-          </Table.Head>
-          <Table.Body>
-            {loading ? (
-              <Table.Loading colSpan={5} />
-            ) : filteredBusinesses.length === 0 ? (
-              <Table.Empty
-                colSpan={5}
-                message={searchQuery || categoryFilter || statusFilter
-                  ? 'No se encontraron negocios con los filtros aplicados'
-                  : 'No hay negocios registrados'
-                }
-              />
-            ) : (
-              filteredBusinesses.map((business) => (
-                <Table.Row key={business.id}>
-                  <Table.Cell>
-                    <div className="flex items-center gap-3">
-                      <Avatar
-                        name={business.name}
-                        src={business.logo}
-                        size="md"
-                      />
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {business.name}
-                        </p>
-                        {business.email && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {business.email}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Badge variant={categoryColors[business.category]} size="sm">
-                      <span className="flex items-center gap-1.5">
-                        <CategoryIcon category={business.category} />
-                        {categoryLabels[business.category]}
-                      </span>
-                    </Badge>
-                  </Table.Cell>
-                  <Table.Cell>
-                    {business.owner ? (
-                      <div className="flex items-center gap-2">
-                        <Avatar name={business.owner.name} size="sm" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {business.owner.name}
-                          </p>
-                          <p className="text-xs text-gray-500">{business.owner.email}</p>
+      <Card padding="none" className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <Table.Head>
+              <Table.Row hover={false}>
+                <Table.Header>Negocio</Table.Header>
+                <Table.Header>Categoria</Table.Header>
+                <Table.Header>Owner Asignado</Table.Header>
+                <Table.Header>Estado</Table.Header>
+                <Table.Header align="right">Acciones</Table.Header>
+              </Table.Row>
+            </Table.Head>
+            <Table.Body>
+              {loading ? (
+                <Table.Loading colSpan={5} />
+              ) : filteredBusinesses.length === 0 ? (
+                <Table.Empty
+                  colSpan={5}
+                  message={searchQuery || categoryFilter || statusFilter
+                    ? 'No se encontraron negocios con los filtros aplicados'
+                    : 'No hay negocios registrados'
+                  }
+                />
+              ) : (
+                filteredBusinesses.map((business) => {
+                  const category = getBusinessCategory(business);
+                  const status = getBusinessStatus(business);
+
+                  return (
+                    <Table.Row key={business._id}>
+                      <Table.Cell>
+                        <div className="flex items-center gap-3">
+                          <Avatar
+                            name={business.name}
+                            src={business.logo}
+                            size="md"
+                          />
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {business.name}
+                            </p>
+                            {business.email && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {business.email}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400 text-sm italic">Sin asignar</span>
-                    )}
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Badge
-                      variant={business.status === 'active' ? 'success' : 'default'}
-                      dot
-                      size="sm"
-                    >
-                      {business.status === 'active' ? 'Activo' : 'Inactivo'}
-                    </Badge>
-                  </Table.Cell>
-                  <Table.Cell align="right">
-                    <Dropdown
-                      align="right"
-                      trigger={
-                        <button className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
-                          <MoreHorizontal size={18} className="text-gray-500" />
-                        </button>
-                      }
-                    >
-                      {(close) => (
-                        <>
-                          <Dropdown.Item
-                            icon={<Eye size={16} />}
-                            onClick={() => {
-                              close();
-                              openViewModal(business);
-                            }}
-                          >
-                            Ver detalles
-                          </Dropdown.Item>
-                          <Dropdown.Item
-                            icon={<Edit2 size={16} />}
-                            onClick={() => {
-                              close();
-                              openEditModal(business);
-                            }}
-                          >
-                            Editar
-                          </Dropdown.Item>
-                          <Dropdown.Item
-                            icon={<UserPlus size={16} />}
-                            onClick={() => {
-                              close();
-                              openAssignOwnerModal(business);
-                            }}
-                          >
-                            Asignar Owner
-                          </Dropdown.Item>
-                          <Dropdown.Divider />
-                          <Dropdown.Item
-                            icon={<Power size={16} />}
-                            onClick={() => {
-                              close();
-                              handleToggleStatus(business);
-                            }}
-                          >
-                            {business.status === 'active' ? 'Desactivar' : 'Activar'}
-                          </Dropdown.Item>
-                        </>
-                      )}
-                    </Dropdown>
-                  </Table.Cell>
-                </Table.Row>
-              ))
-            )}
-          </Table.Body>
-        </Table>
+                      </Table.Cell>
+                      <Table.Cell>
+                        <Badge variant={categoryColors[category] || 'secondary'} size="sm">
+                          <span className="flex items-center gap-1.5">
+                            <CategoryIcon category={category} />
+                            {categoryLabels[category] || business.category?.name || category}
+                          </span>
+                        </Badge>
+                      </Table.Cell>
+                      <Table.Cell>
+                        {business.owner ? (
+                          <div className="flex items-center gap-2">
+                            <Avatar name={business.owner.name} size="sm" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {business.owner.name}
+                              </p>
+                              <p className="text-xs text-gray-500">{business.owner.email}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm italic">Sin asignar</span>
+                        )}
+                      </Table.Cell>
+                      <Table.Cell>
+                        <Badge
+                          variant={status === 'active' ? 'success' : 'default'}
+                          dot
+                          size="sm"
+                        >
+                          {status === 'active' ? 'Activo' : 'Inactivo'}
+                        </Badge>
+                      </Table.Cell>
+                      <Table.Cell align="right">
+                        <Dropdown
+                          align="right"
+                          trigger={
+                            <button className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                              <MoreHorizontal size={18} className="text-gray-500" />
+                            </button>
+                          }
+                        >
+                          {(close) => (
+                            <>
+                              <Dropdown.Item
+                                icon={<Eye size={16} />}
+                                onClick={() => {
+                                  close();
+                                  openViewModal(business);
+                                }}
+                              >
+                                Ver detalles
+                              </Dropdown.Item>
+                              <Dropdown.Item
+                                icon={<Edit2 size={16} />}
+                                onClick={() => {
+                                  close();
+                                  openEditModal(business);
+                                }}
+                              >
+                                Editar
+                              </Dropdown.Item>
+                              <Dropdown.Item
+                                icon={<UserPlus size={16} />}
+                                onClick={() => {
+                                  close();
+                                  openAssignOwnerModal(business);
+                                }}
+                              >
+                                Asignar Owner
+                              </Dropdown.Item>
+                              <Dropdown.Divider />
+                              <Dropdown.Item
+                                icon={<Power size={16} />}
+                                onClick={() => {
+                                  close();
+                                  handleToggleStatus(business);
+                                }}
+                              >
+                                {status === 'active' ? 'Desactivar' : 'Activar'}
+                              </Dropdown.Item>
+                              <Dropdown.Item
+                                icon={<Trash2 size={16} />}
+                                danger
+                                onClick={() => {
+                                  close();
+                                  openDeleteModal(business);
+                                }}
+                              >
+                                Eliminar
+                              </Dropdown.Item>
+                            </>
+                          )}
+                        </Dropdown>
+                      </Table.Cell>
+                    </Table.Row>
+                  );
+                })
+              )}
+            </Table.Body>
+          </Table>
+        </div>
       </Card>
 
       {/* Results count */}
@@ -483,14 +630,14 @@ const Businesses = () => {
             />
             <Select
               label="Categoria"
-              options={[
-                { value: 'food', label: 'Comida' },
-                { value: 'store', label: 'Tienda' },
-                { value: 'delivery', label: 'Envio' },
-              ]}
+              options={businessCategories.map(cat => ({
+                value: cat._id,
+                label: cat.name,
+              }))}
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               error={formErrors.category}
+              placeholder="Seleccionar categoria"
             />
           </div>
           <Input
@@ -553,11 +700,10 @@ const Businesses = () => {
             />
             <Select
               label="Categoria"
-              options={[
-                { value: 'food', label: 'Comida' },
-                { value: 'store', label: 'Tienda' },
-                { value: 'delivery', label: 'Envio' },
-              ]}
+              options={businessCategories.map(cat => ({
+                value: cat._id,
+                label: cat.name,
+              }))}
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
             />
@@ -600,6 +746,32 @@ const Businesses = () => {
         </Modal.Footer>
       </Modal>
 
+      {/* Delete Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setSelectedBusiness(null);
+        }}
+        title="Eliminar Negocio"
+        size="sm"
+      >
+        <p className="text-gray-600 dark:text-gray-300">
+          ¿Estas seguro de eliminar <strong>{selectedBusiness?.name}</strong>? Esta accion no se puede deshacer.
+        </p>
+        <Modal.Footer>
+          <Button variant="ghost" onClick={() => {
+            setIsDeleteModalOpen(false);
+            setSelectedBusiness(null);
+          }}>
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={handleDeleteBusiness} loading={submitting}>
+            Eliminar
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
       {/* Assign Owner Modal */}
       <Modal
         isOpen={isAssignOwnerModalOpen}
@@ -620,8 +792,8 @@ const Businesses = () => {
           ) : (
             availableOwners.map((owner) => (
               <button
-                key={owner.id}
-                onClick={() => handleAssignOwner(owner.id)}
+                key={owner._id}
+                onClick={() => handleAssignOwner(owner._id)}
                 disabled={submitting}
                 className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-left"
               >
@@ -654,10 +826,10 @@ const Businesses = () => {
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                   {selectedBusiness.name}
                 </h3>
-                <Badge variant={categoryColors[selectedBusiness.category]} className="mt-1">
+                <Badge variant={categoryColors[getBusinessCategory(selectedBusiness)] || 'secondary'} className="mt-1">
                   <span className="flex items-center gap-1.5">
-                    <CategoryIcon category={selectedBusiness.category} />
-                    {categoryLabels[selectedBusiness.category]}
+                    <CategoryIcon category={getBusinessCategory(selectedBusiness)} />
+                    {categoryLabels[getBusinessCategory(selectedBusiness)] || selectedBusiness.category?.name}
                   </span>
                 </Badge>
               </div>
@@ -668,10 +840,10 @@ const Businesses = () => {
                 <label className="text-sm text-gray-500 dark:text-gray-400">Estado</label>
                 <p className="mt-1">
                   <Badge
-                    variant={selectedBusiness.status === 'active' ? 'success' : 'default'}
+                    variant={getBusinessStatus(selectedBusiness) === 'active' ? 'success' : 'default'}
                     dot
                   >
-                    {selectedBusiness.status === 'active' ? 'Activo' : 'Inactivo'}
+                    {getBusinessStatus(selectedBusiness) === 'active' ? 'Activo' : 'Inactivo'}
                   </Badge>
                 </p>
               </div>
@@ -681,6 +853,12 @@ const Businesses = () => {
                   {selectedBusiness.owner?.name || 'Sin asignar'}
                 </p>
               </div>
+              {selectedBusiness.description && (
+                <div className="col-span-2">
+                  <label className="text-sm text-gray-500 dark:text-gray-400">Descripcion</label>
+                  <p className="mt-1 text-gray-900 dark:text-white">{selectedBusiness.description}</p>
+                </div>
+              )}
               {selectedBusiness.address && (
                 <div className="col-span-2">
                   <label className="text-sm text-gray-500 dark:text-gray-400">Direccion</label>

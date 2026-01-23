@@ -15,9 +15,11 @@ import {
   Phone,
   Eye,
   EyeOff,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { Card, Button, Input, Select, Badge, Table, Modal, Avatar, Dropdown } from '../../components/ui';
-import api from '../../config/api';
+import { authFetch, ENDPOINTS } from '../../config/api';
 
 const roleIcons = {
   admin: ShieldCheck,
@@ -48,6 +50,9 @@ const Users = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
 
+  // Toast state
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -67,6 +72,12 @@ const Users = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Toast helper
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+  };
+
   // Fetch data
   useEffect(() => {
     fetchUsers();
@@ -76,19 +87,19 @@ const Users = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/users');
-      setUsers(response.data.users || response.data || []);
+      const response = await authFetch(ENDPOINTS.users.base);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al cargar usuarios');
+      }
+
+      const usersData = data.users || data.data || data || [];
+      setUsers(usersData);
     } catch (error) {
       console.error('Error fetching users:', error);
-      // Mock data
-      setUsers([
-        { id: 1, name: 'Admin Principal', email: 'admin@joymap.com', phone: '+52 999 111 2222', role: 'admin', business: null },
-        { id: 2, name: 'Juan Perez', email: 'juan@email.com', phone: '+52 999 123 4567', role: 'business_owner', business: { id: 1, name: 'El Buen Sabor' } },
-        { id: 3, name: 'Maria Garcia', email: 'maria@email.com', phone: '+52 999 234 5678', role: 'business_owner', business: { id: 2, name: 'Pizza Express' } },
-        { id: 4, name: 'Carlos Lopez', email: 'carlos@email.com', phone: '+52 999 345 6789', role: 'driver', business: null },
-        { id: 5, name: 'Ana Martinez', email: 'ana@email.com', phone: '+52 999 456 7890', role: 'customer', business: null },
-        { id: 6, name: 'Pedro Sanchez', email: 'pedro@email.com', phone: '+52 999 567 8901', role: 'business_owner', business: null },
-      ]);
+      showToast('Error al cargar usuarios', 'error');
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -96,16 +107,18 @@ const Users = () => {
 
   const fetchBusinesses = async () => {
     try {
-      const response = await api.get('/businesses');
-      setBusinesses(response.data.businesses || response.data || []);
+      const response = await authFetch(ENDPOINTS.businesses.all);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al cargar negocios');
+      }
+
+      const businessesData = data.businesses || data.data || data || [];
+      setBusinesses(businessesData);
     } catch (error) {
-      // Mock data
-      setBusinesses([
-        { id: 1, name: 'El Buen Sabor' },
-        { id: 2, name: 'Pizza Express' },
-        { id: 3, name: 'Tienda Central' },
-        { id: 4, name: 'Sushi Master' },
-      ]);
+      console.error('Error fetching businesses:', error);
+      setBusinesses([]);
     }
   };
 
@@ -113,8 +126,8 @@ const Users = () => {
   const filteredUsers = users.filter((user) => {
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch =
-      user.name.toLowerCase().includes(searchLower) ||
-      user.email.toLowerCase().includes(searchLower);
+      (user.name || '').toLowerCase().includes(searchLower) ||
+      (user.email || '').toLowerCase().includes(searchLower);
     const matchesRole = !roleFilter || user.role === roleFilter;
     return matchesSearch && matchesRole;
   });
@@ -139,20 +152,24 @@ const Users = () => {
 
     setSubmitting(true);
     try {
-      await api.post('/users/create', formData);
+      const response = await authFetch(ENDPOINTS.users.create, {
+        method: 'POST',
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al crear usuario');
+      }
+
+      showToast('Usuario creado exitosamente');
       await fetchUsers();
       setIsCreateModalOpen(false);
       resetForm();
     } catch (error) {
-      // Add to local state
-      const newUser = {
-        id: Date.now(),
-        ...formData,
-        business: null,
-      };
-      setUsers([...users, newUser]);
-      setIsCreateModalOpen(false);
-      resetForm();
+      console.error('Error creating user:', error);
+      showToast(error.message || 'Error al crear usuario', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -173,51 +190,93 @@ const Users = () => {
 
     setSubmitting(true);
     try {
-      await api.put(`/users/${selectedUser.id}`, formData);
+      // Build update payload (exclude password if empty)
+      const updateData = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        role: formData.role,
+      };
+
+      if (formData.password && formData.password.length >= 6) {
+        updateData.password = formData.password;
+      }
+
+      const response = await authFetch(ENDPOINTS.users.byId(selectedUser._id), {
+        method: 'PUT',
+        body: JSON.stringify(updateData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al actualizar usuario');
+      }
+
+      showToast('Usuario actualizado exitosamente');
       await fetchUsers();
-    } catch (error) {
-      setUsers(users.map(u =>
-        u.id === selectedUser.id ? { ...u, ...formData } : u
-      ));
-    } finally {
-      setSubmitting(false);
       setIsEditModalOpen(false);
       setSelectedUser(null);
       resetForm();
+    } catch (error) {
+      console.error('Error updating user:', error);
+      showToast(error.message || 'Error al actualizar usuario', 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleAssignBusiness = async (businessId) => {
     setSubmitting(true);
     try {
-      await api.post('/admin/assign-business', {
-        userId: selectedUser.id,
-        businessId,
+      const response = await authFetch(ENDPOINTS.admin.assignBusiness, {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: selectedUser._id,
+          businessId,
+        }),
       });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al asignar negocio');
+      }
+
+      showToast('Negocio asignado exitosamente');
       await fetchUsers();
-    } catch (error) {
-      const business = businesses.find(b => b.id === businessId);
-      setUsers(users.map(u =>
-        u.id === selectedUser.id ? { ...u, business } : u
-      ));
-    } finally {
-      setSubmitting(false);
       setIsAssignBusinessModalOpen(false);
       setSelectedUser(null);
+    } catch (error) {
+      console.error('Error assigning business:', error);
+      showToast(error.message || 'Error al asignar negocio', 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDeleteUser = async () => {
     setSubmitting(true);
     try {
-      await api.delete(`/users/${selectedUser.id}`);
+      const response = await authFetch(ENDPOINTS.users.byId(selectedUser._id), {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al eliminar usuario');
+      }
+
+      showToast('Usuario eliminado exitosamente');
       await fetchUsers();
-    } catch (error) {
-      setUsers(users.filter(u => u.id !== selectedUser.id));
-    } finally {
-      setSubmitting(false);
       setIsDeleteModalOpen(false);
       setSelectedUser(null);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      showToast(error.message || 'Error al eliminar usuario', 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -236,10 +295,10 @@ const Users = () => {
   const openEditModal = (user) => {
     setSelectedUser(user);
     setFormData({
-      name: user.name,
-      email: user.email,
+      name: user.name || '',
+      email: user.email || '',
       phone: user.phone || '',
-      role: user.role,
+      role: user.role || 'customer',
       password: '',
     });
     setIsEditModalOpen(true);
@@ -262,6 +321,18 @@ const Users = () => {
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg ${
+          toast.type === 'success'
+            ? 'bg-green-500 text-white'
+            : 'bg-red-500 text-white'
+        }`}>
+          {toast.type === 'success' ? <CheckCircle size={20} /> : <XCircle size={20} />}
+          {toast.message}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -336,13 +407,13 @@ const Users = () => {
               />
             ) : (
               filteredUsers.map((user) => (
-                <Table.Row key={user.id}>
+                <Table.Row key={user._id}>
                   <Table.Cell>
                     <div className="flex items-center gap-3">
-                      <Avatar name={user.name} size="md" />
+                      <Avatar name={user.name || 'Usuario'} size="md" />
                       <div>
                         <p className="font-medium text-gray-900 dark:text-white">
-                          {user.name}
+                          {user.name || 'Sin nombre'}
                         </p>
                       </div>
                     </div>
@@ -351,7 +422,7 @@ const Users = () => {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                         <Mail size={14} className="text-gray-400" />
-                        {user.email}
+                        {user.email || '-'}
                       </div>
                       {user.phone && (
                         <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
@@ -362,10 +433,10 @@ const Users = () => {
                     </div>
                   </Table.Cell>
                   <Table.Cell>
-                    <Badge variant={roleColors[user.role]} size="sm">
+                    <Badge variant={roleColors[user.role] || 'default'} size="sm">
                       <span className="flex items-center gap-1.5">
                         <RoleIcon role={user.role} />
-                        {roleLabels[user.role]}
+                        {roleLabels[user.role] || user.role}
                       </span>
                     </Badge>
                   </Table.Cell>
@@ -374,7 +445,7 @@ const Users = () => {
                       <div className="flex items-center gap-2">
                         <Building2 size={16} className="text-gray-400" />
                         <span className="text-sm text-gray-900 dark:text-white">
-                          {user.business.name}
+                          {user.business.name || 'Sin nombre'}
                         </span>
                       </div>
                     ) : user.role === 'business_owner' ? (
@@ -615,8 +686,8 @@ const Users = () => {
           ) : (
             businesses.map((business) => (
               <button
-                key={business.id}
-                onClick={() => handleAssignBusiness(business.id)}
+                key={business._id}
+                onClick={() => handleAssignBusiness(business._id)}
                 disabled={submitting}
                 className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-left"
               >
