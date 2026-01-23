@@ -102,9 +102,10 @@ const SalesHistory = () => {
   // Filter orders
   const filteredOrders = orders.filter((order) => {
     const searchLower = searchQuery.toLowerCase();
-    const orderId = order.orderNumber || order._id?.slice(-6) || '';
-    const customerName = order.customer?.name || '';
-    const businessName = order.business?.name || '';
+    // Ensure orderId is always a string (MongoDB _id is ObjectId)
+    const orderId = order.orderNumber?.toString() || order._id?.toString()?.slice(-6) || '';
+    const customerName = order.customer?.name || order.customerId?.name || '';
+    const businessName = order.business?.name || order.businessId?.name || '';
 
     const matchesSearch =
       orderId.toLowerCase().includes(searchLower) ||
@@ -263,7 +264,7 @@ const SalesHistory = () => {
                   <Table.Row key={order._id}>
                     <Table.Cell>
                       <span className="font-mono font-semibold text-gray-900 dark:text-white">
-                        #{order.orderNumber || order._id?.slice(-6)}
+                        #{order.orderNumber || order._id?.toString()?.slice(-6)}
                       </span>
                     </Table.Cell>
                     <Table.Cell>
@@ -331,7 +332,7 @@ const SalesHistory = () => {
           setIsDetailModalOpen(false);
           setSelectedOrder(null);
         }}
-        title={`Orden #${selectedOrder?.orderNumber || selectedOrder?._id?.slice(-6)}`}
+        title={`Orden #${selectedOrder?.orderNumber || selectedOrder?._id?.toString()?.slice(-6)}`}
         size="lg"
       >
         {selectedOrder && (
@@ -372,7 +373,9 @@ const SalesHistory = () => {
                   {selectedOrder.deliveryAddress && (
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <MapPin size={14} />
-                      {selectedOrder.deliveryAddress}
+                      {typeof selectedOrder.deliveryAddress === 'object'
+                        ? `${selectedOrder.deliveryAddress?.street || ''}${selectedOrder.deliveryAddress?.reference ? ` (${selectedOrder.deliveryAddress.reference})` : ''}`
+                        : selectedOrder.deliveryAddress}
                     </div>
                   )}
                 </div>
