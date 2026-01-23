@@ -44,7 +44,8 @@ import NotFound from './pages/shared/NotFound';
 // Legacy Pages (will be migrated later)
 import Panel from './Pages/Panel';
 import OrdersDashboard from './Pages/OrdersPDV/OrdersDashboard';
-import KitchenMain from './Pages/Kitchen/MainKitchen';
+// Kitchen moved to modern component
+import Kitchen from './pages/business/Kitchen';
 import InventoryPage from './Pages/Inventory/Inventory';
 import ClientsPage from './Pages/Customers/Customers';
 import DiscountCodesPage from './Pages/Marketing/Discounts';
@@ -183,7 +184,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'kitchen',
-        element: <KitchenMain />,
+        element: <Kitchen />,
       },
       {
         path: 'sales',
@@ -224,7 +225,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'kitchenMain',
-        element: <KitchenMain />,
+        element: <Kitchen />,
       },
       {
         path: 'clients',
