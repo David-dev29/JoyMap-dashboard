@@ -30,6 +30,8 @@ import BusinessOrders from './pages/admin/business/BusinessOrders';
 
 // Business Pages
 import BusinessDashboard from './pages/business/Dashboard';
+import MyBusiness from './pages/business/MyBusiness';
+import BusinessSettings from './pages/business/Settings';
 
 // Shared Pages
 import NotFound from './pages/shared/NotFound';
@@ -184,11 +186,11 @@ const router = createBrowserRouter([
       },
       {
         path: 'my-business',
-        element: <div className="p-4 text-gray-500">Mi negocio (proximamente)</div>,
+        element: <MyBusiness />,
       },
       {
         path: 'settings',
-        element: <div className="p-4 text-gray-500">Configuracion (proximamente)</div>,
+        element: <BusinessSettings />,
       },
 
       // ============================================
