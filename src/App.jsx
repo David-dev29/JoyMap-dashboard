@@ -22,6 +22,12 @@ import AdminDiscounts from './pages/admin/Discounts';
 import AdminReviews from './pages/admin/Reviews';
 import AdminSalesHistory from './pages/admin/SalesHistory';
 
+// Admin Business Management Pages
+import BusinessProfile from './pages/admin/business/BusinessProfile';
+import BusinessProducts from './pages/admin/business/BusinessProducts';
+import ProductCategories from './pages/admin/business/ProductCategories';
+import BusinessOrders from './pages/admin/business/BusinessOrders';
+
 // Business Pages
 import BusinessDashboard from './pages/business/Dashboard';
 
@@ -123,6 +129,26 @@ const router = createBrowserRouter([
       {
         path: 'admin/sales/history',
         element: <AdminSalesHistory />,
+      },
+
+      // ============================================
+      // ADMIN BUSINESS MANAGEMENT ROUTES
+      // ============================================
+      {
+        path: 'admin/business/profile',
+        element: <BusinessProfile />,
+      },
+      {
+        path: 'admin/business/products',
+        element: <BusinessProducts />,
+      },
+      {
+        path: 'admin/business/product-categories',
+        element: <ProductCategories />,
+      },
+      {
+        path: 'admin/business/orders',
+        element: <BusinessOrders />,
       },
 
       // ============================================

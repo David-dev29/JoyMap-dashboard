@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom';
-import { Menu, Sun, Moon, Bell, LogOut, User, Settings, ChevronDown, Search } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Menu, Sun, Moon, Bell, LogOut, User, Settings, ChevronDown, Search, Store } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -11,6 +11,9 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
   const { selectedBusiness, canChangeBusiness } = useBusiness();
   const { theme, toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isBusinessManagementRoute = location.pathname.startsWith('/admin/business/');
 
   const handleLogout = () => {
     logout();
@@ -44,8 +47,17 @@ const Header = ({ onToggleSidebar, isSidebarOpen }) => {
 
           {/* Business Selector (Admin only) */}
           {canChangeBusiness && (
-            <div className="hidden lg:block ml-2">
+            <div className="hidden lg:flex items-center gap-3 ml-2">
               <BusinessSelector />
+              {/* Business Management Indicator */}
+              {isBusinessManagementRoute && selectedBusiness && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-100 dark:bg-orange-900/30 rounded-lg border border-orange-200 dark:border-orange-800">
+                  <Store size={16} className="text-orange-600 dark:text-orange-400" />
+                  <span className="text-sm font-medium text-orange-700 dark:text-orange-300">
+                    Gestionando: {selectedBusiness.name}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

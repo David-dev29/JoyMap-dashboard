@@ -144,3 +144,35 @@ export const deleteCategory = async (categoryId) => {
   });
   return res.json();
 };
+
+// ============================================
+// Gestion de negocios (Admin)
+// ============================================
+
+// Obtener negocio por ID
+export const getBusinessById = async (businessId) => {
+  const res = await authFetch(ENDPOINTS.businesses.byId(businessId));
+  return res.json();
+};
+
+// Actualizar perfil de negocio (soporta FormData para imagenes)
+export const updateBusiness = async (businessId, formData) => {
+  const res = await authFetch(ENDPOINTS.businesses.byId(businessId), {
+    method: 'PUT',
+    body: formData,
+  });
+  return res.json();
+};
+
+// ============================================
+// Gestion de ordenes
+// ============================================
+
+// Actualizar estado de orden
+export const updateOrderStatus = async (orderId, status) => {
+  const res = await authFetch(ENDPOINTS.orders.update(orderId), {
+    method: 'PUT',
+    body: JSON.stringify({ status }),
+  });
+  return res.json();
+};

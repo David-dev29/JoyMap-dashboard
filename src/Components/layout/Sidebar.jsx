@@ -25,10 +25,12 @@ import {
   UserCircle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useBusiness } from '../../context/BusinessContext';
 import { Tooltip } from '../ui';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const { user } = useAuth();
+  const { selectedBusiness } = useBusiness();
   const navigate = useNavigate();
   const location = useLocation();
   const [openMenus, setOpenMenus] = useState({});
@@ -43,6 +45,14 @@ const Sidebar = ({ isOpen, onClose }) => {
         { icon: Building2, label: 'Negocios', path: '/admin/businesses' },
         { icon: Users, label: 'Usuarios', path: '/admin/users' },
         { icon: Tag, label: 'Categorias', path: '/admin/categories' },
+        // Conditional section: Only show when a business is selected
+        ...(selectedBusiness ? [
+          { type: 'label', label: 'NEGOCIO SELECCIONADO', special: 'business' },
+          { icon: Store, label: 'Perfil', path: '/admin/business/profile' },
+          { icon: Package, label: 'Menu', path: '/admin/business/products' },
+          { icon: Boxes, label: 'Categorias', path: '/admin/business/product-categories' },
+          { icon: ShoppingCart, label: 'Ordenes', path: '/admin/business/orders' },
+        ] : []),
         { type: 'label', label: 'VENTAS' },
         { icon: History, label: 'Historial', path: '/admin/sales/history' },
         { icon: BarChart3, label: 'Reportes', path: '/admin/reports' },
@@ -97,16 +107,28 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const renderMenuItem = (item, index) => {
     if (item.type === 'label') {
+      const isBusinessSection = item.special === 'business';
       return (
         <div
           key={index}
           className={`
             px-3 pt-6 pb-2 text-[11px] font-semibold uppercase tracking-wider
-            text-gray-400 dark:text-gray-500
+            ${isBusinessSection
+              ? 'text-orange-500 dark:text-orange-400'
+              : 'text-gray-400 dark:text-gray-500'}
             ${!isOpen && 'hidden'}
           `}
         >
-          {item.label}
+          {isBusinessSection && selectedBusiness ? (
+            <div className="flex flex-col">
+              <span>{item.label}</span>
+              <span className="text-[10px] font-normal normal-case text-orange-400 dark:text-orange-300 truncate">
+                {selectedBusiness.name}
+              </span>
+            </div>
+          ) : (
+            item.label
+          )}
         </div>
       );
     }
