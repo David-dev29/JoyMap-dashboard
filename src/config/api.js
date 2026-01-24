@@ -130,6 +130,13 @@ export const ENDPOINTS = {
     orders: `${API_BASE_URL}/me/orders`,
     ordersStats: `${API_BASE_URL}/me/orders/stats`,
   },
+
+  // Configuracion de plataforma (Admin)
+  settings: {
+    base: `${API_BASE_URL}/settings`,
+    full: `${API_BASE_URL}/settings/full`,
+    uploadLogo: `${API_BASE_URL}/settings/upload-logo`,
+  },
 };
 
 /**

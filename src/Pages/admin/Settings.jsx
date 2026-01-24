@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Settings as SettingsIcon,
   Save,
@@ -11,88 +11,214 @@ import {
   Image,
   RefreshCw,
   Check,
+  AlertCircle,
+  DollarSign,
+  Truck,
+  Clock,
+  Shield,
+  Link,
+  MessageCircle,
 } from 'lucide-react';
-import { Card, Button, Input } from '../../components/ui';
+import { Card, Button, Input, Toggle, Spinner } from '../../components/ui';
+import { ENDPOINTS, authFetch } from '../../config/api';
 
-const STORAGE_KEY = 'joymap_platform_settings';
-
+// Default settings structure matching backend
 const defaultSettings = {
-  platformName: 'JoyMap',
-  tagline: 'Tu plataforma de delivery favorita',
+  appName: 'JoyMap',
   logo: '',
-  logoTypographic: '',
+  logoText: '',
   primaryColor: '#4F46E5',
   secondaryColor: '#7C3AED',
-  contactEmail: 'contacto@joymap.com',
-  contactPhone: '+52 999 123 4567',
-  address: 'Merida, Yucatan, Mexico',
-  website: 'https://joymap.com',
-  facebook: '',
-  instagram: '',
-  twitter: '',
+  slogan: 'Tu plataforma de delivery favorita',
+  contactEmail: '',
+  contactPhone: '',
+  contactWhatsApp: '',
+  address: '',
+  socialMedia: {
+    facebook: '',
+    instagram: '',
+    twitter: '',
+    tiktok: '',
+  },
+  deliveryFee: 0,
+  minOrderAmount: 0,
+  maxDeliveryRadius: 10,
+  currency: 'MXN',
+  currencySymbol: '$',
+  timezone: 'America/Mexico_City',
+  isMaintenanceMode: false,
+  maintenanceMessage: '',
+  termsUrl: '',
+  privacyUrl: '',
 };
 
 const Settings = () => {
   const [settings, setSettings] = useState(defaultSettings);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('general');
+  const [uploadingLogo, setUploadingLogo] = useState(null);
 
-  // Load settings from localStorage
+  const logoInputRef = useRef(null);
+  const logoTextInputRef = useRef(null);
+
+  // Load settings from API
   useEffect(() => {
-    const storedSettings = localStorage.getItem(STORAGE_KEY);
-    if (storedSettings) {
+    const fetchSettings = async () => {
       try {
-        const parsed = JSON.parse(storedSettings);
-        setSettings({ ...defaultSettings, ...parsed });
-      } catch (error) {
-        console.error('Error loading settings:', error);
+        setLoading(true);
+        setError(null);
+
+        const response = await authFetch(ENDPOINTS.settings.full);
+        const data = await response.json();
+
+        console.log('=== DEBUG Settings: Loaded ===');
+        console.log('Response:', data);
+
+        if (data.success && data.settings) {
+          // Merge with defaults to ensure all fields exist
+          setSettings({
+            ...defaultSettings,
+            ...data.settings,
+            socialMedia: {
+              ...defaultSettings.socialMedia,
+              ...(data.settings.socialMedia || {}),
+            },
+          });
+        } else if (data.settings) {
+          setSettings({
+            ...defaultSettings,
+            ...data.settings,
+            socialMedia: {
+              ...defaultSettings.socialMedia,
+              ...(data.settings.socialMedia || {}),
+            },
+          });
+        }
+      } catch (err) {
+        console.error('Error loading settings:', err);
+        setError('Error al cargar la configuracion');
+      } finally {
+        setLoading(false);
       }
-    }
+    };
+
+    fetchSettings();
   }, []);
 
-  // Save settings to localStorage
+  // Save settings to API
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
+    setError(null);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 800));
+    try {
+      console.log('=== DEBUG Settings: Saving ===');
+      console.log('Settings:', settings);
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      const response = await authFetch(ENDPOINTS.settings.base, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
 
-    setSaving(false);
-    setSaved(true);
+      const data = await response.json();
+      console.log('Save response:', data);
 
-    // Reset saved indicator after 3 seconds
-    setTimeout(() => setSaved(false), 3000);
-  };
-
-  // Reset to defaults
-  const handleReset = () => {
-    if (window.confirm('Estas seguro de restaurar la configuracion por defecto?')) {
-      setSettings(defaultSettings);
-      localStorage.removeItem(STORAGE_KEY);
+      if (data.success || response.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      } else {
+        throw new Error(data.message || 'Error al guardar');
+      }
+    } catch (err) {
+      console.error('Error saving settings:', err);
+      setError(err.message || 'Error al guardar la configuracion');
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Handle file upload (mock - just stores base64)
-  const handleFileUpload = (field) => (e) => {
+  // Handle logo upload
+  const handleLogoUpload = async (file, type) => {
+    if (!file) return;
+
+    setUploadingLogo(type);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('logo', file);
+      formData.append('type', type); // 'logo' or 'logoText'
+
+      console.log('=== DEBUG Settings: Uploading logo ===');
+      console.log('Type:', type);
+
+      const response = await authFetch(ENDPOINTS.settings.uploadLogo, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      console.log('Upload response:', data);
+
+      if (data.success && data.url) {
+        setSettings(prev => ({
+          ...prev,
+          [type]: data.url,
+        }));
+      } else {
+        throw new Error(data.message || 'Error al subir imagen');
+      }
+    } catch (err) {
+      console.error('Error uploading logo:', err);
+      setError(err.message || 'Error al subir la imagen');
+    } finally {
+      setUploadingLogo(null);
+    }
+  };
+
+  // Handle file input change
+  const handleFileChange = (type) => (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSettings({ ...settings, [field]: reader.result });
-      };
-      reader.readAsDataURL(file);
+      handleLogoUpload(file, type);
     }
+  };
+
+  // Update nested socialMedia fields
+  const updateSocialMedia = (field, value) => {
+    setSettings(prev => ({
+      ...prev,
+      socialMedia: {
+        ...prev.socialMedia,
+        [field]: value,
+      },
+    }));
   };
 
   const tabs = [
     { id: 'general', label: 'General', icon: Globe },
     { id: 'branding', label: 'Marca', icon: Palette },
     { id: 'contact', label: 'Contacto', icon: Mail },
+    { id: 'delivery', label: 'Delivery', icon: Truck },
+    { id: 'advanced', label: 'Avanzado', icon: Shield },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <Spinner size="lg" />
+          <span className="text-slate-500 dark:text-slate-400">
+            Cargando configuracion...
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -103,13 +229,10 @@ const Settings = () => {
             Configuracion de Plataforma
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
-            Personaliza la configuracion general de JoyMap
+            Personaliza la configuracion general de {settings.appName || 'la plataforma'}
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="ghost" leftIcon={<RefreshCw size={18} />} onClick={handleReset}>
-            Restaurar
-          </Button>
           <Button
             leftIcon={saved ? <Check size={18} /> : <Save size={18} />}
             onClick={handleSave}
@@ -121,9 +244,17 @@ const Settings = () => {
         </div>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl flex items-center gap-3">
+          <AlertCircle size={20} className="text-red-500 flex-shrink-0" />
+          <span className="text-red-700 dark:text-red-300">{error}</span>
+        </div>
+      )}
+
       {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="flex gap-4">
+      <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+        <nav className="flex gap-4 min-w-max">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -131,7 +262,7 @@ const Settings = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
-                  flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors
+                  flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
                   ${activeTab === tab.id
                     ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
                     : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
@@ -161,22 +292,36 @@ const Settings = () => {
                 <div className="space-y-4">
                   <Input
                     label="Nombre de la plataforma"
-                    value={settings.platformName}
-                    onChange={(e) => setSettings({ ...settings, platformName: e.target.value })}
+                    value={settings.appName}
+                    onChange={(e) => setSettings({ ...settings, appName: e.target.value })}
                     placeholder="JoyMap"
                   />
                   <Input
                     label="Slogan / Tagline"
-                    value={settings.tagline}
-                    onChange={(e) => setSettings({ ...settings, tagline: e.target.value })}
+                    value={settings.slogan}
+                    onChange={(e) => setSettings({ ...settings, slogan: e.target.value })}
                     placeholder="Tu plataforma de delivery favorita"
                   />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Moneda"
+                      value={settings.currency}
+                      onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
+                      placeholder="MXN"
+                    />
+                    <Input
+                      label="Simbolo de moneda"
+                      value={settings.currencySymbol}
+                      onChange={(e) => setSettings({ ...settings, currencySymbol: e.target.value })}
+                      placeholder="$"
+                    />
+                  </div>
                   <Input
-                    label="Sitio web"
-                    value={settings.website}
-                    onChange={(e) => setSettings({ ...settings, website: e.target.value })}
-                    placeholder="https://joymap.com"
-                    leftIcon={<Globe size={18} />}
+                    label="Zona horaria"
+                    value={settings.timezone}
+                    onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
+                    placeholder="America/Mexico_City"
+                    leftIcon={<Clock size={18} />}
                   />
                 </div>
               </Card.Content>
@@ -199,36 +344,51 @@ const Settings = () => {
                         Logo Principal
                       </label>
                       <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors">
-                        {settings.logo ? (
+                        {uploadingLogo === 'logo' ? (
+                          <div className="py-4">
+                            <Spinner size="md" className="mx-auto" />
+                            <p className="text-sm text-gray-500 mt-2">Subiendo...</p>
+                          </div>
+                        ) : settings.logo ? (
                           <div className="space-y-3">
                             <img
                               src={settings.logo}
                               alt="Logo"
                               className="h-20 mx-auto object-contain"
                             />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSettings({ ...settings, logo: '' })}
-                            >
-                              Eliminar
-                            </Button>
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => logoInputRef.current?.click()}
+                              >
+                                Cambiar
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSettings({ ...settings, logo: '' })}
+                              >
+                                Eliminar
+                              </Button>
+                            </div>
                           </div>
                         ) : (
-                          <label className="cursor-pointer block">
+                          <label className="cursor-pointer block" onClick={() => logoInputRef.current?.click()}>
                             <Image size={40} className="mx-auto mb-3 text-gray-400" />
                             <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                              Arrastra o haz clic para subir
+                              Haz clic para subir
                             </p>
                             <p className="text-xs text-gray-400">PNG, JPG hasta 2MB</p>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleFileUpload('logo')}
-                              className="hidden"
-                            />
                           </label>
                         )}
+                        <input
+                          ref={logoInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileChange('logo')}
+                          className="hidden"
+                        />
                       </div>
                     </div>
 
@@ -238,36 +398,51 @@ const Settings = () => {
                         Logo Tipografico
                       </label>
                       <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors">
-                        {settings.logoTypographic ? (
+                        {uploadingLogo === 'logoText' ? (
+                          <div className="py-4">
+                            <Spinner size="md" className="mx-auto" />
+                            <p className="text-sm text-gray-500 mt-2">Subiendo...</p>
+                          </div>
+                        ) : settings.logoText ? (
                           <div className="space-y-3">
                             <img
-                              src={settings.logoTypographic}
+                              src={settings.logoText}
                               alt="Logo Tipografico"
                               className="h-20 mx-auto object-contain"
                             />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSettings({ ...settings, logoTypographic: '' })}
-                            >
-                              Eliminar
-                            </Button>
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => logoTextInputRef.current?.click()}
+                              >
+                                Cambiar
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSettings({ ...settings, logoText: '' })}
+                              >
+                                Eliminar
+                              </Button>
+                            </div>
                           </div>
                         ) : (
-                          <label className="cursor-pointer block">
+                          <label className="cursor-pointer block" onClick={() => logoTextInputRef.current?.click()}>
                             <Image size={40} className="mx-auto mb-3 text-gray-400" />
                             <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                              Arrastra o haz clic para subir
+                              Haz clic para subir
                             </p>
                             <p className="text-xs text-gray-400">PNG, JPG hasta 2MB</p>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleFileUpload('logoTypographic')}
-                              className="hidden"
-                            />
                           </label>
                         )}
+                        <input
+                          ref={logoTextInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileChange('logoText')}
+                          className="hidden"
+                        />
                       </div>
                     </div>
                   </div>
@@ -351,6 +526,13 @@ const Settings = () => {
                       leftIcon={<Phone size={18} />}
                     />
                     <Input
+                      label="WhatsApp"
+                      value={settings.contactWhatsApp}
+                      onChange={(e) => setSettings({ ...settings, contactWhatsApp: e.target.value })}
+                      placeholder="+52 999 123 4567"
+                      leftIcon={<MessageCircle size={18} />}
+                    />
+                    <Input
                       label="Direccion"
                       value={settings.address}
                       onChange={(e) => setSettings({ ...settings, address: e.target.value })}
@@ -370,21 +552,137 @@ const Settings = () => {
                   <div className="space-y-4">
                     <Input
                       label="Facebook"
-                      value={settings.facebook}
-                      onChange={(e) => setSettings({ ...settings, facebook: e.target.value })}
+                      value={settings.socialMedia?.facebook || ''}
+                      onChange={(e) => updateSocialMedia('facebook', e.target.value)}
                       placeholder="https://facebook.com/joymap"
                     />
                     <Input
                       label="Instagram"
-                      value={settings.instagram}
-                      onChange={(e) => setSettings({ ...settings, instagram: e.target.value })}
+                      value={settings.socialMedia?.instagram || ''}
+                      onChange={(e) => updateSocialMedia('instagram', e.target.value)}
                       placeholder="https://instagram.com/joymap"
                     />
                     <Input
                       label="Twitter / X"
-                      value={settings.twitter}
-                      onChange={(e) => setSettings({ ...settings, twitter: e.target.value })}
+                      value={settings.socialMedia?.twitter || ''}
+                      onChange={(e) => updateSocialMedia('twitter', e.target.value)}
                       placeholder="https://twitter.com/joymap"
+                    />
+                    <Input
+                      label="TikTok"
+                      value={settings.socialMedia?.tiktok || ''}
+                      onChange={(e) => updateSocialMedia('tiktok', e.target.value)}
+                      placeholder="https://tiktok.com/@joymap"
+                    />
+                  </div>
+                </Card.Content>
+              </Card>
+            </>
+          )}
+
+          {/* Delivery Tab */}
+          {activeTab === 'delivery' && (
+            <Card>
+              <Card.Header>
+                <Card.Title>Configuracion de Delivery</Card.Title>
+                <Card.Description>Ajusta los parametros de envio predeterminados</Card.Description>
+              </Card.Header>
+              <Card.Content>
+                <div className="space-y-4">
+                  <Input
+                    label="Costo de envio predeterminado"
+                    type="number"
+                    value={settings.deliveryFee}
+                    onChange={(e) => setSettings({ ...settings, deliveryFee: parseFloat(e.target.value) || 0 })}
+                    placeholder="0"
+                    leftIcon={<DollarSign size={18} />}
+                    helperText="Costo base de envio en tu moneda"
+                  />
+                  <Input
+                    label="Monto minimo de orden"
+                    type="number"
+                    value={settings.minOrderAmount}
+                    onChange={(e) => setSettings({ ...settings, minOrderAmount: parseFloat(e.target.value) || 0 })}
+                    placeholder="0"
+                    leftIcon={<DollarSign size={18} />}
+                    helperText="Monto minimo requerido para realizar un pedido"
+                  />
+                  <Input
+                    label="Radio maximo de entrega (km)"
+                    type="number"
+                    value={settings.maxDeliveryRadius}
+                    onChange={(e) => setSettings({ ...settings, maxDeliveryRadius: parseFloat(e.target.value) || 0 })}
+                    placeholder="10"
+                    leftIcon={<Truck size={18} />}
+                    helperText="Radio maximo para entregas en kilometros"
+                  />
+                </div>
+              </Card.Content>
+            </Card>
+          )}
+
+          {/* Advanced Tab */}
+          {activeTab === 'advanced' && (
+            <>
+              <Card>
+                <Card.Header>
+                  <Card.Title>Modo Mantenimiento</Card.Title>
+                  <Card.Description>Activa el modo mantenimiento cuando necesites realizar cambios</Card.Description>
+                </Card.Header>
+                <Card.Content>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          Modo Mantenimiento
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          La plataforma mostrara un mensaje de mantenimiento a los usuarios
+                        </p>
+                      </div>
+                      <Toggle
+                        checked={settings.isMaintenanceMode}
+                        onChange={(checked) => setSettings({ ...settings, isMaintenanceMode: checked })}
+                      />
+                    </div>
+                    {settings.isMaintenanceMode && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                          Mensaje de mantenimiento
+                        </label>
+                        <textarea
+                          value={settings.maintenanceMessage}
+                          onChange={(e) => setSettings({ ...settings, maintenanceMessage: e.target.value })}
+                          placeholder="Estamos realizando mejoras. Volvemos pronto!"
+                          rows={3}
+                          className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 resize-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </Card.Content>
+              </Card>
+
+              <Card>
+                <Card.Header>
+                  <Card.Title>Enlaces Legales</Card.Title>
+                  <Card.Description>URLs a tus documentos legales</Card.Description>
+                </Card.Header>
+                <Card.Content>
+                  <div className="space-y-4">
+                    <Input
+                      label="URL de Terminos y Condiciones"
+                      value={settings.termsUrl}
+                      onChange={(e) => setSettings({ ...settings, termsUrl: e.target.value })}
+                      placeholder="https://joymap.com/terminos"
+                      leftIcon={<Link size={18} />}
+                    />
+                    <Input
+                      label="URL de Politica de Privacidad"
+                      value={settings.privacyUrl}
+                      onChange={(e) => setSettings({ ...settings, privacyUrl: e.target.value })}
+                      placeholder="https://joymap.com/privacidad"
+                      leftIcon={<Link size={18} />}
                     />
                   </div>
                 </Card.Content>
@@ -415,14 +713,14 @@ const Settings = () => {
                       className="w-16 h-16 mx-auto rounded-xl flex items-center justify-center text-white font-bold text-2xl"
                       style={{ backgroundColor: settings.primaryColor }}
                     >
-                      {settings.platformName.charAt(0)}
+                      {(settings.appName || 'J').charAt(0)}
                     </div>
                   )}
                   <h3 className="mt-4 text-lg font-bold text-gray-900 dark:text-white">
-                    {settings.platformName}
+                    {settings.appName || 'JoyMap'}
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {settings.tagline}
+                    {settings.slogan || 'Tu plataforma de delivery'}
                   </p>
                 </div>
 
@@ -457,7 +755,7 @@ const Settings = () => {
                 </div>
 
                 {/* Contact preview */}
-                {settings.contactEmail && (
+                {(settings.contactEmail || settings.contactPhone) && (
                   <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Contacto
@@ -466,6 +764,32 @@ const Settings = () => {
                       {settings.contactEmail && <p>{settings.contactEmail}</p>}
                       {settings.contactPhone && <p>{settings.contactPhone}</p>}
                     </div>
+                  </div>
+                )}
+
+                {/* Delivery info preview */}
+                {(settings.deliveryFee > 0 || settings.minOrderAmount > 0) && (
+                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Delivery
+                    </p>
+                    <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                      {settings.deliveryFee > 0 && (
+                        <p>Envio: {settings.currencySymbol}{settings.deliveryFee}</p>
+                      )}
+                      {settings.minOrderAmount > 0 && (
+                        <p>Min: {settings.currencySymbol}{settings.minOrderAmount}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Maintenance mode indicator */}
+                {settings.isMaintenanceMode && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                      Modo Mantenimiento Activo
+                    </p>
                   </div>
                 )}
               </div>
