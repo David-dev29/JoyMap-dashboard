@@ -13,6 +13,11 @@ import {
   X,
   Check,
   AlertCircle,
+  CreditCard,
+  Banknote,
+  Smartphone,
+  Palette,
+  RotateCcw,
 } from 'lucide-react';
 import { Card, Button, Input, Toggle } from '../../components/ui';
 import { getMyBusiness, updateBusiness } from '../../services/api';
@@ -67,6 +72,19 @@ const MyBusiness = () => {
     sunday: { isOpen: false, open: '10:00', close: '18:00' },
   });
 
+  // Payment methods state
+  const [paymentMethods, setPaymentMethods] = useState({
+    cash: true,
+    card: false,
+    transfer: false,
+  });
+
+  // Brand color state
+  const [brandColor, setBrandColor] = useState('#E53935');
+
+  // Predefined brand colors
+  const BRAND_COLORS = ['#E53935', '#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#00BCD4', '#795548', '#607D8B'];
+
   // Load business data
   useEffect(() => {
     const loadBusinessData = async () => {
@@ -109,6 +127,20 @@ const MyBusiness = () => {
 
         if (businessData.schedule) {
           setSchedule(businessData.schedule);
+        }
+
+        // Load payment methods
+        if (businessData.paymentMethods) {
+          setPaymentMethods({
+            cash: businessData.paymentMethods.cash ?? true,
+            card: businessData.paymentMethods.card ?? false,
+            transfer: businessData.paymentMethods.transfer ?? false,
+          });
+        }
+
+        // Load brand color
+        if (businessData.brandColor) {
+          setBrandColor(businessData.brandColor);
         }
       } catch (err) {
         console.error('Error loading business:', err);
@@ -188,6 +220,19 @@ const MyBusiness = () => {
     setSuccess(false);
   };
 
+  const handlePaymentMethodChange = (method, value) => {
+    setPaymentMethods(prev => ({
+      ...prev,
+      [method]: value,
+    }));
+    setSuccess(false);
+  };
+
+  const handleBrandColorChange = (color) => {
+    setBrandColor(color);
+    setSuccess(false);
+  };
+
   const handleSubmit = async () => {
     if (!business) return;
 
@@ -207,6 +252,8 @@ const MyBusiness = () => {
       formDataToSend.append('minOrderAmount', formData.minOrderAmount);
       formDataToSend.append('isOpen', formData.isOpen);
       formDataToSend.append('schedule', JSON.stringify(schedule));
+      formDataToSend.append('paymentMethods', JSON.stringify(paymentMethods));
+      formDataToSend.append('brandColor', brandColor);
 
       if (logoFile) {
         formDataToSend.append('logo', logoFile);
@@ -414,6 +461,155 @@ const MyBusiness = () => {
                 checked={formData.isOpen}
                 onChange={(checked) => handleInputChange('isOpen', checked)}
               />
+            </div>
+          </Card>
+
+          {/* Payment Methods */}
+          <Card>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+              <CreditCard size={18} />
+              Metodos de Pago
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Selecciona los metodos de pago que acepta tu negocio
+            </p>
+
+            <div className="space-y-3">
+              {/* Efectivo */}
+              <label className="flex items-center gap-3 p-3 border border-gray-200 dark:border-slate-600 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={paymentMethods.cash}
+                  onChange={(e) => handlePaymentMethodChange('cash', e.target.checked)}
+                  className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500"
+                />
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                    <Banknote size={20} className="text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">Efectivo</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Pago en efectivo al momento de la entrega</p>
+                  </div>
+                </div>
+              </label>
+
+              {/* Tarjeta */}
+              <label className="flex items-center gap-3 p-3 border border-gray-200 dark:border-slate-600 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={paymentMethods.card}
+                  onChange={(e) => handlePaymentMethodChange('card', e.target.checked)}
+                  className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                    <CreditCard size={20} className="text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">Tarjeta</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Pago con tarjeta de debito o credito</p>
+                  </div>
+                </div>
+              </label>
+
+              {/* Transferencia */}
+              <label className="flex items-center gap-3 p-3 border border-gray-200 dark:border-slate-600 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={paymentMethods.transfer}
+                  onChange={(e) => handlePaymentMethodChange('transfer', e.target.checked)}
+                  className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                />
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                    <Smartphone size={20} className="text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">Transferencia</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Transferencia bancaria o SPEI</p>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </Card>
+
+          {/* Brand Color */}
+          <Card>
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+              <Palette size={18} />
+              Color de Marca
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Este color se usara en las categorias y botones de tu menu
+            </p>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 flex-wrap">
+                {/* Color picker */}
+                <div className="relative">
+                  <input
+                    type="color"
+                    value={brandColor}
+                    onChange={(e) => handleBrandColorChange(e.target.value)}
+                    className="w-14 h-14 rounded-xl cursor-pointer border-2 border-gray-200 dark:border-slate-600"
+                    style={{ padding: '2px' }}
+                  />
+                </div>
+
+                {/* Predefined colors */}
+                <div className="flex gap-2 flex-wrap flex-1">
+                  {BRAND_COLORS.map(color => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => handleBrandColorChange(color)}
+                      className={`w-10 h-10 rounded-lg border-2 transition-all hover:scale-105 ${
+                        brandColor === color
+                          ? 'border-gray-900 dark:border-white scale-110 ring-2 ring-offset-2 ring-gray-400'
+                          : 'border-transparent'
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Reset button */}
+              <button
+                type="button"
+                onClick={() => handleBrandColorChange('#E53935')}
+                className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                <RotateCcw size={14} />
+                Usar color por defecto
+              </button>
+
+              {/* Preview */}
+              <div className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">Vista previa:</p>
+                <div className="flex gap-2 flex-wrap">
+                  <span
+                    className="px-4 py-1.5 rounded-full text-white text-sm font-medium"
+                    style={{ backgroundColor: brandColor }}
+                  >
+                    Categoria
+                  </span>
+                  <button
+                    type="button"
+                    className="px-4 py-1.5 rounded-lg text-white text-sm font-medium"
+                    style={{ backgroundColor: brandColor }}
+                  >
+                    + Agregar
+                  </button>
+                  <span
+                    className="px-4 py-1.5 rounded-lg text-sm font-medium border-2"
+                    style={{ borderColor: brandColor, color: brandColor }}
+                  >
+                    Seleccionado
+                  </span>
+                </div>
+              </div>
             </div>
           </Card>
         </div>
