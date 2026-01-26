@@ -137,6 +137,16 @@ export const ENDPOINTS = {
     full: `${API_BASE_URL}/settings/full`,
     uploadLogo: `${API_BASE_URL}/settings/upload-logo`,
   },
+
+  // Cupones
+  coupons: {
+    base: `${API_BASE_URL}/coupons`,
+    my: `${API_BASE_URL}/coupons/my`,
+    byBusiness: (businessId) => `${API_BASE_URL}/coupons/business/${businessId}`,
+    byId: (id) => `${API_BASE_URL}/coupons/${id}`,
+    validate: `${API_BASE_URL}/coupons/validate`,
+    use: `${API_BASE_URL}/coupons/use`,
+  },
 };
 
 /**

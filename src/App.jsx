@@ -27,6 +27,7 @@ import AdminBusinessProfile from './pages/admin/business/BusinessProfile';
 import AdminBusinessProducts from './pages/admin/business/BusinessProducts';
 import AdminProductCategories from './pages/admin/business/ProductCategories';
 import AdminBusinessOrders from './pages/admin/business/BusinessOrders';
+import AdminBusinessCoupons from './pages/admin/business/Coupons';
 
 // Business Pages
 import BusinessDashboard from './pages/business/Dashboard';
@@ -37,6 +38,7 @@ import BusinessProductCategories from './pages/business/ProductCategories';
 import BusinessOrders from './pages/business/Orders';
 import BusinessInventory from './pages/business/Inventory';
 import BusinessSales from './pages/business/Sales';
+import BusinessCoupons from './pages/business/Coupons';
 
 // Shared Pages
 import NotFound from './pages/shared/NotFound';
@@ -158,6 +160,10 @@ const router = createBrowserRouter([
         path: 'admin/business/orders',
         element: <AdminBusinessOrders />,
       },
+      {
+        path: 'admin/business/coupons',
+        element: <AdminBusinessCoupons />,
+      },
 
       // ============================================
       // BUSINESS OWNER ROUTES
@@ -193,6 +199,10 @@ const router = createBrowserRouter([
       {
         path: 'settings',
         element: <BusinessSettings />,
+      },
+      {
+        path: 'coupons',
+        element: <BusinessCoupons />,
       },
       // Legacy sales routes (redirect to new sales page)
       {

@@ -23,6 +23,7 @@ import {
   Percent,
   History,
   UserCircle,
+  Ticket,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useBusiness } from '../../context/BusinessContext';
@@ -52,6 +53,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           { icon: Package, label: 'Menu', path: '/admin/business/products' },
           { icon: Boxes, label: 'Categorias', path: '/admin/business/product-categories' },
           { icon: ShoppingCart, label: 'Ordenes', path: '/admin/business/orders' },
+          { icon: Ticket, label: 'Cupones', path: '/admin/business/coupons' },
         ] : []),
         { type: 'label', label: 'VENTAS' },
         { icon: History, label: 'Historial', path: '/admin/sales/history' },
@@ -84,6 +86,8 @@ const Sidebar = ({ isOpen, onClose }) => {
         { icon: ChefHat, label: 'Cocina', path: '/kitchen' },
         { type: 'label', label: 'FINANZAS' },
         { icon: Wallet, label: 'Ventas', path: '/sales' },
+        { type: 'label', label: 'MARKETING' },
+        { icon: Ticket, label: 'Cupones', path: '/coupons' },
         { type: 'label', label: 'CONFIGURACION' },
         { icon: Settings, label: 'Ajustes', path: '/settings' },
       ];
