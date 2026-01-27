@@ -17,6 +17,8 @@ import {
   AlertCircle,
   MapPin,
   Navigation,
+  Smile,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { Card, Button, Input, Select, Badge, Table, Modal, Avatar, Dropdown } from '../../components/ui';
 import { authFetch, ENDPOINTS } from '../../config/api';
@@ -80,6 +82,23 @@ const Businesses = () => {
   const [gettingLocation, setGettingLocation] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Icon state (emoji or SVG)
+  const [iconType, setIconType] = useState('emoji'); // 'emoji' or 'svg'
+  const [selectedEmoji, setSelectedEmoji] = useState('');
+  const [svgCode, setSvgCode] = useState('');
+  const [svgError, setSvgError] = useState('');
+
+  // Common emojis for businesses
+  const COMMON_EMOJIS = [
+    '🍔', '🍕', '🌮', '🍜', '🍣', '🍰', '☕', '🍺',
+    '🛒', '🏪', '🏬', '💊', '🏥', '💇', '🔧', '🚗',
+    '📚', '🎮', '👕', '👟', '💻', '📱', '🏋️', '🎬',
+    '🌸', '🐕', '🎂', '🍦', '🥗', '🍱', '🥐', '🧁',
+  ];
+
+  // Max SVG code size (50KB)
+  const MAX_SVG_SIZE = 50 * 1024;
 
   // Toast state
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
@@ -192,6 +211,44 @@ const Businesses = () => {
     return business.status || 'active';
   };
 
+  // Validate and handle SVG code input
+  const handleSvgCodeChange = (code) => {
+    setSvgCode(code);
+    setSvgError('');
+
+    if (!code.trim()) {
+      return;
+    }
+
+    // Validate size
+    if (code.length > MAX_SVG_SIZE) {
+      setSvgError(`El codigo SVG no puede superar los ${MAX_SVG_SIZE / 1024}KB`);
+      return;
+    }
+
+    // Validate SVG format
+    const trimmedCode = code.trim();
+    if (!trimmedCode.toLowerCase().startsWith('<svg') || !trimmedCode.toLowerCase().endsWith('</svg>')) {
+      setSvgError('El codigo debe comenzar con <svg y terminar con </svg>');
+      return;
+    }
+  };
+
+  // Check if SVG code is valid for preview
+  const isValidSvg = (code) => {
+    if (!code || !code.trim()) return false;
+    const trimmed = code.trim().toLowerCase();
+    return trimmed.startsWith('<svg') && trimmed.endsWith('</svg>') && code.length <= MAX_SVG_SIZE;
+  };
+
+  // Reset icon state
+  const resetIconState = () => {
+    setIconType('emoji');
+    setSelectedEmoji('');
+    setSvgCode('');
+    setSvgError('');
+  };
+
   // Get current location using Geolocation API
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -241,20 +298,29 @@ const Businesses = () => {
 
     setSubmitting(true);
     try {
-      // Build request body with coordinates array [lng, lat] (GeoJSON format)
+      // Build request body
       const requestBody = {
         name: formData.name,
-        category: formData.category, // ObjectId of business category
+        category: formData.category,
         description: formData.description,
         address: formData.address,
         coordinates: [
-          parseFloat(formData.longitude) || 0,  // longitude first
-          parseFloat(formData.latitude) || 0,   // latitude second
+          parseFloat(formData.longitude) || 0,
+          parseFloat(formData.latitude) || 0,
         ],
         phone: formData.phone,
         email: formData.email,
-        isOpen: true, // Default to active
+        isOpen: true,
       };
+
+      // Add icon data based on type
+      if (iconType === 'svg' && isValidSvg(svgCode)) {
+        requestBody.iconType = 'svg';
+        requestBody.iconSvg = svgCode.trim();
+      } else if (iconType === 'emoji' && selectedEmoji) {
+        requestBody.iconType = 'emoji';
+        requestBody.emoji = selectedEmoji;
+      }
 
       console.log('=== DEBUG Create Business ===');
       console.log('Endpoint:', ENDPOINTS.businesses.create);
@@ -299,18 +365,35 @@ const Businesses = () => {
 
     setSubmitting(true);
     try {
+      let response;
+
+      // Build request body
       const requestBody = {
         name: formData.name,
         category: formData.category,
         description: formData.description,
         address: formData.address,
         coordinates: [
-          parseFloat(formData.longitude) || 0,  // longitude first
-          parseFloat(formData.latitude) || 0,   // latitude second
+          parseFloat(formData.longitude) || 0,
+          parseFloat(formData.latitude) || 0,
         ],
         phone: formData.phone,
         email: formData.email,
       };
+
+      // Add icon data based on type
+      if (iconType === 'svg' && isValidSvg(svgCode)) {
+        requestBody.iconType = 'svg';
+        requestBody.iconSvg = svgCode.trim();
+      } else if (iconType === 'emoji' && selectedEmoji) {
+        requestBody.iconType = 'emoji';
+        requestBody.emoji = selectedEmoji;
+      } else {
+        // Clear icon if nothing selected
+        requestBody.iconType = null;
+        requestBody.emoji = null;
+        requestBody.iconSvg = null;
+      }
 
       console.log('=== DEBUG Edit Business ===');
       console.log('Request body:', requestBody);
@@ -429,6 +512,7 @@ const Businesses = () => {
       longitude: '',
     });
     setFormErrors({});
+    resetIconState();
   };
 
   const openEditModal = (business) => {
@@ -445,6 +529,22 @@ const Businesses = () => {
       latitude: coords[1]?.toString() || '',   // lat is second element
       longitude: coords[0]?.toString() || '',  // lng is first element
     });
+
+    // Load icon state
+    if (business.iconType === 'svg' && business.iconSvg) {
+      setIconType('svg');
+      setSvgCode(business.iconSvg);
+      setSvgError('');
+      setSelectedEmoji('');
+    } else if (business.emoji) {
+      setIconType('emoji');
+      setSelectedEmoji(business.emoji);
+      setSvgCode('');
+      setSvgError('');
+    } else {
+      resetIconState();
+    }
+
     setIsEditModalOpen(true);
   };
 
@@ -804,6 +904,127 @@ const Businesses = () => {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             />
           </div>
+
+          {/* Icon Selector */}
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Icono del negocio (para el mapa)
+            </label>
+
+            {/* Tabs */}
+            <div className="flex gap-2 p-1 bg-gray-100 dark:bg-slate-700 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setIconType('emoji')}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                  iconType === 'emoji'
+                    ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                <Smile size={16} />
+                Emoji
+              </button>
+              <button
+                type="button"
+                onClick={() => setIconType('svg')}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                  iconType === 'svg'
+                    ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                <ImageIcon size={16} />
+                SVG Personalizado
+              </button>
+            </div>
+
+            {/* Emoji Selector */}
+            {iconType === 'emoji' && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-8 gap-2 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg max-h-32 overflow-y-auto">
+                  {COMMON_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setSelectedEmoji(emoji)}
+                      className={`w-9 h-9 flex items-center justify-center text-xl rounded-lg transition-all hover:bg-gray-200 dark:hover:bg-slate-600 ${
+                        selectedEmoji === emoji
+                          ? 'bg-indigo-100 dark:bg-indigo-900/50 ring-2 ring-indigo-500'
+                          : ''
+                      }`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+                {selectedEmoji && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <span>Seleccionado:</span>
+                    <span className="text-2xl">{selectedEmoji}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEmoji('')}
+                      className="text-red-500 hover:text-red-600 text-xs underline"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* SVG Code Input */}
+            {iconType === 'svg' && (
+              <div className="space-y-3">
+                <textarea
+                  value={svgCode}
+                  onChange={(e) => handleSvgCodeChange(e.target.value)}
+                  placeholder="Pega aqui el codigo SVG...&#10;&#10;Ejemplo:&#10;<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>...</svg>"
+                  className={`w-full h-32 px-3 py-2 text-sm font-mono bg-gray-50 dark:bg-slate-700 border rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                    svgError
+                      ? 'border-red-500 dark:border-red-500'
+                      : 'border-gray-200 dark:border-slate-600'
+                  } text-gray-900 dark:text-white placeholder-gray-400`}
+                />
+                {svgError && (
+                  <p className="text-sm text-red-500 flex items-center gap-1">
+                    <AlertCircle size={14} />
+                    {svgError}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Puedes copiar SVGs de sitios como Heroicons, Lucide, FontAwesome, etc.
+                </p>
+
+                {/* Preview */}
+                {isValidSvg(svgCode) && (
+                  <div className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Vista previa:</p>
+                    <div className="flex items-center justify-center">
+                      <div
+                        className="w-16 h-16 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:max-w-full [&>svg]:max-h-full"
+                        dangerouslySetInnerHTML={{ __html: svgCode }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {svgCode && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSvgCode('');
+                      setSvgError('');
+                    }}
+                    className="text-sm text-red-500 hover:text-red-600 underline"
+                  >
+                    Limpiar codigo
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <Modal.Footer>
           <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)}>
@@ -903,6 +1124,127 @@ const Businesses = () => {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             />
+          </div>
+
+          {/* Icon Selector */}
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Icono del negocio (para el mapa)
+            </label>
+
+            {/* Tabs */}
+            <div className="flex gap-2 p-1 bg-gray-100 dark:bg-slate-700 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setIconType('emoji')}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                  iconType === 'emoji'
+                    ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                <Smile size={16} />
+                Emoji
+              </button>
+              <button
+                type="button"
+                onClick={() => setIconType('svg')}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                  iconType === 'svg'
+                    ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                <ImageIcon size={16} />
+                SVG Personalizado
+              </button>
+            </div>
+
+            {/* Emoji Selector */}
+            {iconType === 'emoji' && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-8 gap-2 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg max-h-32 overflow-y-auto">
+                  {COMMON_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setSelectedEmoji(emoji)}
+                      className={`w-9 h-9 flex items-center justify-center text-xl rounded-lg transition-all hover:bg-gray-200 dark:hover:bg-slate-600 ${
+                        selectedEmoji === emoji
+                          ? 'bg-indigo-100 dark:bg-indigo-900/50 ring-2 ring-indigo-500'
+                          : ''
+                      }`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+                {selectedEmoji && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <span>Seleccionado:</span>
+                    <span className="text-2xl">{selectedEmoji}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEmoji('')}
+                      className="text-red-500 hover:text-red-600 text-xs underline"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* SVG Code Input */}
+            {iconType === 'svg' && (
+              <div className="space-y-3">
+                <textarea
+                  value={svgCode}
+                  onChange={(e) => handleSvgCodeChange(e.target.value)}
+                  placeholder="Pega aqui el codigo SVG...&#10;&#10;Ejemplo:&#10;<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>...</svg>"
+                  className={`w-full h-32 px-3 py-2 text-sm font-mono bg-gray-50 dark:bg-slate-700 border rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                    svgError
+                      ? 'border-red-500 dark:border-red-500'
+                      : 'border-gray-200 dark:border-slate-600'
+                  } text-gray-900 dark:text-white placeholder-gray-400`}
+                />
+                {svgError && (
+                  <p className="text-sm text-red-500 flex items-center gap-1">
+                    <AlertCircle size={14} />
+                    {svgError}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Puedes copiar SVGs de sitios como Heroicons, Lucide, FontAwesome, etc.
+                </p>
+
+                {/* Preview */}
+                {isValidSvg(svgCode) && (
+                  <div className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Vista previa:</p>
+                    <div className="flex items-center justify-center">
+                      <div
+                        className="w-16 h-16 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:max-w-full [&>svg]:max-h-full"
+                        dangerouslySetInnerHTML={{ __html: svgCode }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {svgCode && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSvgCode('');
+                      setSvgError('');
+                    }}
+                    className="text-sm text-red-500 hover:text-red-600 underline"
+                  >
+                    Limpiar codigo
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <Modal.Footer>
