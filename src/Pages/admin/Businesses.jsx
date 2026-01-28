@@ -298,16 +298,21 @@ const Businesses = () => {
 
     setSubmitting(true);
     try {
-      // Build request body
+      // Parse coordinates
+      const lng = parseFloat(formData.longitude);
+      const lat = parseFloat(formData.latitude);
+
+      // Build request body with location in GeoJSON format
       const requestBody = {
         name: formData.name,
         category: formData.category,
         description: formData.description,
         address: formData.address,
-        coordinates: [
-          parseFloat(formData.longitude) || 0,
-          parseFloat(formData.latitude) || 0,
-        ],
+        coordinates: [lng || 0, lat || 0],
+        location: {
+          type: 'Point',
+          coordinates: [lng || 0, lat || 0]
+        },
         phone: formData.phone,
         email: formData.email,
         isOpen: true,
@@ -324,7 +329,7 @@ const Businesses = () => {
 
       console.log('=== DEBUG Create Business ===');
       console.log('Endpoint:', ENDPOINTS.businesses.create);
-      console.log('Request body:', requestBody);
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
 
       const response = await authFetch(ENDPOINTS.businesses.create, {
         method: 'POST',
@@ -365,7 +370,10 @@ const Businesses = () => {
 
     setSubmitting(true);
     try {
-      let response;
+      // Parse coordinates
+      const lng = parseFloat(formData.longitude);
+      const lat = parseFloat(formData.latitude);
+      const hasValidCoords = !isNaN(lng) && !isNaN(lat) && (lng !== 0 || lat !== 0);
 
       // Build request body
       const requestBody = {
@@ -373,13 +381,18 @@ const Businesses = () => {
         category: formData.category,
         description: formData.description,
         address: formData.address,
-        coordinates: [
-          parseFloat(formData.longitude) || 0,
-          parseFloat(formData.latitude) || 0,
-        ],
         phone: formData.phone,
         email: formData.email,
       };
+
+      // Add coordinates in both formats for compatibility
+      if (hasValidCoords) {
+        requestBody.coordinates = [lng, lat];
+        requestBody.location = {
+          type: 'Point',
+          coordinates: [lng, lat]
+        };
+      }
 
       // Add icon data based on type
       if (iconType === 'svg' && isValidSvg(svgCode)) {
@@ -396,7 +409,10 @@ const Businesses = () => {
       }
 
       console.log('=== DEBUG Edit Business ===');
-      console.log('Request body:', requestBody);
+      console.log('formData.latitude:', formData.latitude);
+      console.log('formData.longitude:', formData.longitude);
+      console.log('hasValidCoords:', hasValidCoords);
+      console.log('Full request body:', JSON.stringify(requestBody, null, 2));
 
       const response = await authFetch(ENDPOINTS.businesses.byId(selectedBusiness._id), {
         method: 'PUT',
@@ -517,8 +533,23 @@ const Businesses = () => {
 
   const openEditModal = (business) => {
     setSelectedBusiness(business);
-    // coordinates is array [lng, lat] in GeoJSON format
-    const coords = business.coordinates || [];
+
+    // Handle different coordinate formats:
+    // 1. coordinates: [lng, lat] - direct array
+    // 2. location: { type: 'Point', coordinates: [lng, lat] } - GeoJSON
+    let coords = [];
+    if (business.coordinates && Array.isArray(business.coordinates)) {
+      coords = business.coordinates;
+    } else if (business.location?.coordinates && Array.isArray(business.location.coordinates)) {
+      coords = business.location.coordinates;
+    }
+
+    console.log('=== DEBUG openEditModal ===');
+    console.log('Business:', business.name);
+    console.log('business.coordinates:', business.coordinates);
+    console.log('business.location:', business.location);
+    console.log('Extracted coords:', coords);
+
     setFormData({
       name: business.name || '',
       category: business.category?._id || business.categoryId || '',
