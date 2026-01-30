@@ -1,5 +1,6 @@
 // App.jsx
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './Components/ProtectedRoute';
 
@@ -46,8 +47,6 @@ import NotFound from './pages/shared/NotFound';
 // Legacy Pages (will be migrated later)
 import Panel from './Pages/Panel';
 import OrdersDashboard from './Pages/OrdersPDV/OrdersDashboard';
-// Kitchen moved to modern component
-import Kitchen from './pages/business/Kitchen';
 import InventoryPage from './Pages/Inventory/Inventory';
 import ClientsPage from './Pages/Customers/Customers';
 import DiscountCodesPage from './Pages/Marketing/Discounts';
@@ -189,10 +188,6 @@ const router = createBrowserRouter([
         element: <BusinessInventory />,
       },
       {
-        path: 'kitchen',
-        element: <Kitchen />,
-      },
-      {
         path: 'sales',
         element: <BusinessSales />,
       },
@@ -234,10 +229,6 @@ const router = createBrowserRouter([
         element: <OrdersDashboard />,
       },
       {
-        path: 'kitchenMain',
-        element: <Kitchen />,
-      },
-      {
         path: 'clients',
         element: <ClientsPage />,
       },
@@ -275,6 +266,7 @@ export default function App() {
   return (
     <AuthProvider>
       <RouterProvider router={router} />
+      <Toaster position="top-right" richColors closeButton />
     </AuthProvider>
   );
 }

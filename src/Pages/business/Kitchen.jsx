@@ -98,9 +98,9 @@ const OrderCard = ({ order, onAccept, onReject, onReady, onDelivered, isUpdating
             <OrderTypeIcon size={14} className="mr-1" />
             {orderType.label}
           </Badge>
-          {order.customer?.name && (
+          {(order.customerId?.name || order.customer?.name) && (
             <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-              {order.customer.name}
+              {order.customerId?.name || order.customer?.name}
             </span>
           )}
         </div>

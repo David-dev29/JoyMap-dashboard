@@ -362,20 +362,19 @@ const SalesHistory = () => {
                 <Avatar name={selectedOrder.customer?.name || 'Cliente'} size="md" />
                 <div className="space-y-1">
                   <p className="font-medium text-gray-900 dark:text-white">
-                    {selectedOrder.customer?.name || 'Cliente'}
+                    {selectedOrder.customerId?.name || selectedOrder.customer?.name || 'Cliente'}
                   </p>
-                  {selectedOrder.customer?.phone && (
+                  {(selectedOrder.customerId?.phone || selectedOrder.customer?.phone) && (
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <Phone size={14} />
-                      {selectedOrder.customer.phone}
+                      {selectedOrder.customerId?.phone || selectedOrder.customer?.phone}
                     </div>
                   )}
                   {selectedOrder.deliveryAddress && (
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <MapPin size={14} />
-                      {typeof selectedOrder.deliveryAddress === 'object'
-                        ? `${selectedOrder.deliveryAddress?.street || ''}${selectedOrder.deliveryAddress?.reference ? ` (${selectedOrder.deliveryAddress.reference})` : ''}`
-                        : selectedOrder.deliveryAddress}
+                      {selectedOrder.deliveryAddress?.street || (typeof selectedOrder.deliveryAddress === 'string' ? selectedOrder.deliveryAddress : '')}
+                      {selectedOrder.deliveryAddress?.reference ? ` (${selectedOrder.deliveryAddress.reference})` : ''}
                     </div>
                   )}
                 </div>

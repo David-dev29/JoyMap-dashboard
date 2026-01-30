@@ -118,27 +118,10 @@ const Businesses = () => {
     setLoading(true);
     try {
       const response = await authFetch(ENDPOINTS.businesses.all);
-      console.log('=== DEBUG Businesses ===');
-      console.log('Endpoint:', ENDPOINTS.businesses.all);
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-
       const data = await response.json();
-      console.log('API Response (raw):', data);
-      console.log('Type of data:', typeof data);
-      console.log('Is Array:', Array.isArray(data));
-      console.log('data.businesses:', data.businesses);
-      console.log('data.response:', data.response);
-      console.log('data.data:', data.data);
-      console.log('data.success:', data.success);
-      if (data && typeof data === 'object') {
-        console.log('Object.keys(data):', Object.keys(data));
-      }
 
       if (data.success !== false) {
         const businessList = data.businesses || data.response || data.data || (Array.isArray(data) ? data : []);
-        console.log('Final businessList:', businessList);
-        console.log('businessList length:', businessList.length);
         setBusinesses(Array.isArray(businessList) ? businessList : []);
       } else {
         throw new Error(data.message || 'Error al cargar negocios');
@@ -154,14 +137,8 @@ const Businesses = () => {
   const fetchBusinessCategories = async () => {
     try {
       const response = await authFetch(ENDPOINTS.businessCategories.base);
-      console.log('=== DEBUG Business Categories ===');
-      console.log('Endpoint:', ENDPOINTS.businessCategories.base);
-
       const data = await response.json();
-      console.log('Categories API Response:', data);
-
       const categories = data.categories || data.response || data.data || (Array.isArray(data) ? data : []);
-      console.log('Final categories:', categories);
       setBusinessCategories(Array.isArray(categories) ? categories : []);
     } catch (error) {
       console.error('Error fetching business categories:', error);
@@ -171,16 +148,10 @@ const Businesses = () => {
   const fetchAvailableOwners = async () => {
     try {
       const response = await authFetch(`${ENDPOINTS.users.base}?role=business_owner`);
-      console.log('=== DEBUG Available Owners ===');
-
       const data = await response.json();
-      console.log('Owners API Response:', data);
-
       const users = data.users || data.response || data.data || (Array.isArray(data) ? data : []);
-      console.log('Users extracted:', users);
       // Filter users that don't have a business assigned
       const available = users.filter(u => !u.businessId && !u.business);
-      console.log('Available owners:', available);
       setAvailableOwners(Array.isArray(available) ? available : []);
     } catch (error) {
       console.error('Error fetching available owners:', error);
@@ -327,18 +298,12 @@ const Businesses = () => {
         requestBody.emoji = selectedEmoji;
       }
 
-      console.log('=== DEBUG Create Business ===');
-      console.log('Endpoint:', ENDPOINTS.businesses.create);
-      console.log('Request body:', JSON.stringify(requestBody, null, 2));
-
       const response = await authFetch(ENDPOINTS.businesses.create, {
         method: 'POST',
         body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
-      console.log('Response status:', response.status);
-      console.log('Response data:', data);
 
       if (response.ok && data.success !== false) {
         showToast('Negocio creado exitosamente');
@@ -407,12 +372,6 @@ const Businesses = () => {
         requestBody.emoji = null;
         requestBody.iconSvg = null;
       }
-
-      console.log('=== DEBUG Edit Business ===');
-      console.log('formData.latitude:', formData.latitude);
-      console.log('formData.longitude:', formData.longitude);
-      console.log('hasValidCoords:', hasValidCoords);
-      console.log('Full request body:', JSON.stringify(requestBody, null, 2));
 
       const response = await authFetch(ENDPOINTS.businesses.byId(selectedBusiness._id), {
         method: 'PUT',
@@ -543,12 +502,6 @@ const Businesses = () => {
     } else if (business.location?.coordinates && Array.isArray(business.location.coordinates)) {
       coords = business.location.coordinates;
     }
-
-    console.log('=== DEBUG openEditModal ===');
-    console.log('Business:', business.name);
-    console.log('business.coordinates:', business.coordinates);
-    console.log('business.location:', business.location);
-    console.log('Extracted coords:', coords);
 
     setFormData({
       name: business.name || '',
@@ -973,7 +926,7 @@ const Businesses = () => {
             {/* Emoji Selector */}
             {iconType === 'emoji' && (
               <div className="space-y-2">
-                <div className="grid grid-cols-8 gap-2 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg max-h-32 overflow-y-auto">
+                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg max-h-32 overflow-y-auto">
                   {COMMON_EMOJIS.map((emoji) => (
                     <button
                       key={emoji}
@@ -1194,7 +1147,7 @@ const Businesses = () => {
             {/* Emoji Selector */}
             {iconType === 'emoji' && (
               <div className="space-y-2">
-                <div className="grid grid-cols-8 gap-2 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg max-h-32 overflow-y-auto">
+                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg max-h-32 overflow-y-auto">
                   {COMMON_EMOJIS.map((emoji) => (
                     <button
                       key={emoji}

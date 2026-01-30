@@ -13,6 +13,7 @@ import {
   Boxes,
   ArrowRight,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Card, Button, Input, Badge, Table, Modal, Toggle } from '../../components/ui';
 import { getMyBusiness } from '../../services/api';
 import { authFetch, ENDPOINTS } from '../../config/api';
@@ -251,12 +252,14 @@ const Products = () => {
         // Reload all data
         await loadData();
         setIsModalOpen(false);
+        toast.success(editingProduct ? 'Producto actualizado' : 'Producto creado');
       } else {
         throw new Error(data.message || 'Error al guardar');
       }
     } catch (err) {
       console.error('Error saving product:', err);
       setModalError(err.message || 'Error al guardar el producto');
+      toast.error(err.message || 'Error al guardar el producto');
     } finally {
       setSaving(false);
     }
@@ -275,8 +278,10 @@ const Products = () => {
       setProducts(prev => prev.map(p =>
         p._id === product._id ? { ...p, isAvailable: newAvailability } : p
       ));
+      toast.success(newAvailability ? 'Producto disponible' : 'Producto no disponible');
     } catch (err) {
       console.error('Error toggling availability:', err);
+      toast.error('Error al cambiar disponibilidad');
     }
   };
 
@@ -295,8 +300,10 @@ const Products = () => {
       setProducts(prev => prev.filter(p => p._id !== productToDelete._id));
       setDeleteModalOpen(false);
       setProductToDelete(null);
+      toast.success('Producto eliminado');
     } catch (err) {
       console.error('Error deleting product:', err);
+      toast.error('Error al eliminar producto');
     }
   };
 

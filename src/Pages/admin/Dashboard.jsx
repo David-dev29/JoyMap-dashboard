@@ -115,7 +115,7 @@ const AdminDashboard = () => {
       setRecentOrders(sortedOrders.slice(0, 8).map(order => ({
         id: order.orderNumber || order._id?.slice(-6),
         business: order.business?.name || 'Negocio',
-        customer: order.customer?.name || 'Cliente',
+        customer: order.customerId?.name || order.customer?.name || 'Cliente',
         total: order.total || 0,
         status: order.status || 'pending',
         time: getTimeAgo(order.createdAt),

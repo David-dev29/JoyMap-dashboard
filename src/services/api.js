@@ -174,5 +174,11 @@ export const updateOrderStatus = async (orderId, status) => {
     method: 'PUT',
     body: JSON.stringify({ status }),
   });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || `Error ${res.status}: ${res.statusText}`);
+  }
+
   return res.json();
 };

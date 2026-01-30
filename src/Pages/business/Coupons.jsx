@@ -16,6 +16,7 @@ import {
   Users,
   Copy,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Card, Button, Input, Badge, Table, Modal, Dropdown } from '../../components/ui';
 import { authFetch, ENDPOINTS } from '../../config/api';
 
@@ -47,12 +48,13 @@ const Coupons = () => {
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  // Toast state
-  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-
+  // Toast helper
   const showToast = (message, type = 'success') => {
-    setToast({ show: true, message, type });
-    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+    if (type === 'error') {
+      toast.error(message);
+    } else {
+      toast.success(message);
+    }
   };
 
   // Fetch coupons
@@ -425,18 +427,6 @@ const Coupons = () => {
 
   return (
     <div className="space-y-6 overflow-hidden max-w-full">
-      {/* Toast */}
-      {toast.show && (
-        <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg ${
-          toast.type === 'success'
-            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
-            : 'bg-red-50 text-red-700 dark:bg-red-900/50 dark:text-red-300'
-        }`}>
-          {toast.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
-          {toast.message}
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

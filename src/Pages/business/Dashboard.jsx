@@ -274,7 +274,7 @@ const BusinessDashboard = () => {
                           Pedido #{order.orderNumber || order._id?.toString()?.slice(-6)}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {order.customer?.name || 'Cliente'} - {formatTimeAgo(order.createdAt)}
+                          {order.customerId?.name || order.customer?.name || 'Cliente'} - {formatTimeAgo(order.createdAt)}
                         </p>
                       </div>
                     </div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, Children, isValidElement } from 'react';
 import { X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
@@ -50,6 +50,15 @@ const Modal = ({
 
   if (!isOpen) return null;
 
+  // Separate Modal.Footer from other children
+  const childrenArray = Children.toArray(children);
+  const footerChild = childrenArray.find(
+    (child) => isValidElement(child) && child.type === ModalFooter
+  );
+  const contentChildren = childrenArray.filter(
+    (child) => !isValidElement(child) || child.type !== ModalFooter
+  );
+
   return createPortal(
     <div
       ref={overlayRef}
@@ -59,23 +68,24 @@ const Modal = ({
       <div
         className={`
           relative w-full ${sizes[size]}
+          max-h-[90vh] overflow-hidden flex flex-col
           bg-white dark:bg-gray-800
           rounded-xl shadow-2xl
           animate-in zoom-in-95 duration-200
           ${className}
         `}
       >
-        {/* Header */}
+        {/* Header - Fixed */}
         {(title || showCloseButton) && (
-          <div className="flex items-start justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-            <div>
+          <div className="flex-shrink-0 flex items-start justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="min-w-0 flex-1 pr-2">
               {title && (
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
                   {title}
                 </h2>
               )}
               {description && (
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 truncate">
                   {description}
                 </p>
               )}
@@ -83,7 +93,7 @@ const Modal = ({
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 <X size={20} />
               </button>
@@ -91,21 +101,32 @@ const Modal = ({
           </div>
         )}
 
-        {/* Content */}
-        <div className="p-4">
-          {children}
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {contentChildren}
         </div>
+
+        {/* Footer - Fixed at bottom */}
+        {footerChild && (
+          <div className="flex-shrink-0 p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+            <div className="flex items-center justify-end gap-3">
+              {footerChild.props.children}
+            </div>
+          </div>
+        )}
       </div>
     </div>,
     document.body
   );
 };
 
-const ModalFooter = ({ children, className = '' }) => (
-  <div className={`flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700 ${className}`}>
-    {children}
-  </div>
-);
+const ModalFooter = ({ children, className = '' }) => {
+  // This component is now just a marker - the actual rendering happens in Modal
+  return null;
+};
+
+// Store children for Modal to extract
+ModalFooter.displayName = 'ModalFooter';
 
 Modal.Footer = ModalFooter;
 

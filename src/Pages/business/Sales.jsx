@@ -2,25 +2,26 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   DollarSign,
   TrendingUp,
-  TrendingDown,
   ShoppingCart,
   Calendar,
   RefreshCw,
   ArrowUpRight,
   ArrowDownRight,
   BarChart3,
+  CreditCard,
+  Banknote,
+  Package,
+  Award,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Card, Button, Badge } from '../../components/ui';
-import { StatsCard } from '../../components/shared';
 import { getMyOrders } from '../../services/api';
 
 const Sales = () => {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState([]);
-  const [error, setError] = useState('');
   const [dateRange, setDateRange] = useState('week');
 
-  // Load orders
   useEffect(() => {
     loadOrders();
   }, []);
@@ -28,15 +29,9 @@ const Sales = () => {
   const loadOrders = async () => {
     try {
       setLoading(true);
-      setError('');
-
       const response = await getMyOrders();
-      console.log('=== DEBUG Sales ===');
-      console.log('Orders response:', response);
-
       const ordersList = response.orders || response.data || response || [];
       if (Array.isArray(ordersList)) {
-        // Only consider completed orders for sales
         const completedOrders = ordersList.filter(o =>
           o.status === 'delivered' || o.status === 'completed'
         );
@@ -44,118 +39,135 @@ const Sales = () => {
       }
     } catch (err) {
       console.error('Error loading orders:', err);
-      setError('Error al cargar los datos de ventas');
+      toast.error('Error al cargar los datos de ventas');
     } finally {
       setLoading(false);
     }
   };
 
-  // Calculate stats
-  const stats = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
+  // Helper: Check if date is today
+  const isToday = (dateString) => {
+    const orderDate = new Date(dateString);
+    const today = new Date();
+    return orderDate.getDate() === today.getDate() &&
+           orderDate.getMonth() === today.getMonth() &&
+           orderDate.getFullYear() === today.getFullYear();
+  };
+
+  // Helper: Check if date is yesterday
+  const isYesterday = (dateString) => {
+    const orderDate = new Date(dateString);
+    const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const weekAgo = new Date(today);
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    const twoWeeksAgo = new Date(today);
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-    const monthAgo = new Date(today);
-    monthAgo.setMonth(monthAgo.getMonth() - 1);
-    const twoMonthsAgo = new Date(today);
-    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    return orderDate.getDate() === yesterday.getDate() &&
+           orderDate.getMonth() === yesterday.getMonth() &&
+           orderDate.getFullYear() === yesterday.getFullYear();
+  };
 
-    const todayOrders = orders.filter(o => new Date(o.createdAt) >= today);
-    const yesterdayOrders = orders.filter(o => {
-      const d = new Date(o.createdAt);
-      return d >= yesterday && d < today;
-    });
+  // Helper: Check if date is within last N days
+  const isWithinDays = (dateString, days) => {
+    const orderDate = new Date(dateString);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    cutoff.setHours(0, 0, 0, 0);
+    return orderDate >= cutoff;
+  };
 
-    const thisWeekOrders = orders.filter(o => new Date(o.createdAt) >= weekAgo);
+  // Calculate all stats
+  const stats = useMemo(() => {
+    const todayOrders = orders.filter(o => isToday(o.createdAt));
+    const yesterdayOrders = orders.filter(o => isYesterday(o.createdAt));
+    const thisWeekOrders = orders.filter(o => isWithinDays(o.createdAt, 7));
     const lastWeekOrders = orders.filter(o => {
-      const d = new Date(o.createdAt);
-      return d >= twoWeeksAgo && d < weekAgo;
+      const orderDate = new Date(o.createdAt);
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const twoWeeksAgo = new Date();
+      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+      return orderDate >= twoWeeksAgo && orderDate < weekAgo;
     });
-
-    const thisMonthOrders = orders.filter(o => new Date(o.createdAt) >= monthAgo);
+    const thisMonthOrders = orders.filter(o => isWithinDays(o.createdAt, 30));
     const lastMonthOrders = orders.filter(o => {
-      const d = new Date(o.createdAt);
-      return d >= twoMonthsAgo && d < monthAgo;
+      const orderDate = new Date(o.createdAt);
+      const monthAgo = new Date();
+      monthAgo.setDate(monthAgo.getDate() - 30);
+      const twoMonthsAgo = new Date();
+      twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
+      return orderDate >= twoMonthsAgo && orderDate < monthAgo;
     });
 
     const sum = (arr) => arr.reduce((acc, o) => acc + (o.total || 0), 0);
-
-    const todayRevenue = sum(todayOrders);
-    const yesterdayRevenue = sum(yesterdayOrders);
-    const weekRevenue = sum(thisWeekOrders);
-    const lastWeekRevenue = sum(lastWeekOrders);
-    const monthRevenue = sum(thisMonthOrders);
-    const lastMonthRevenue = sum(lastMonthOrders);
-
     const calcChange = (current, previous) => {
       if (previous === 0) return current > 0 ? 100 : 0;
       return Math.round(((current - previous) / previous) * 100);
     };
 
     return {
-      today: {
-        revenue: todayRevenue,
-        orders: todayOrders.length,
-        change: calcChange(todayRevenue, yesterdayRevenue),
-      },
-      week: {
-        revenue: weekRevenue,
-        orders: thisWeekOrders.length,
-        change: calcChange(weekRevenue, lastWeekRevenue),
-      },
-      month: {
-        revenue: monthRevenue,
-        orders: thisMonthOrders.length,
-        change: calcChange(monthRevenue, lastMonthRevenue),
-      },
+      today: { revenue: sum(todayOrders), orders: todayOrders.length, change: calcChange(sum(todayOrders), sum(yesterdayOrders)) },
+      week: { revenue: sum(thisWeekOrders), orders: thisWeekOrders.length, change: calcChange(sum(thisWeekOrders), sum(lastWeekOrders)) },
+      month: { revenue: sum(thisMonthOrders), orders: thisMonthOrders.length, change: calcChange(sum(thisMonthOrders), sum(lastMonthOrders)) },
       avgTicket: orders.length > 0 ? Math.round(sum(orders) / orders.length) : 0,
+      totalRevenue: sum(orders),
     };
   }, [orders]);
 
-  // Get recent transactions based on date range
-  const recentTransactions = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    let startDate;
+  // Top selling products
+  const topProducts = useMemo(() => {
+    const productMap = new Map();
 
-    switch (dateRange) {
-      case 'today':
-        startDate = today;
-        break;
-      case 'week':
-        startDate = new Date(today);
-        startDate.setDate(startDate.getDate() - 7);
-        break;
-      case 'month':
-        startDate = new Date(today);
-        startDate.setMonth(startDate.getMonth() - 1);
-        break;
-      default:
-        startDate = new Date(today);
-        startDate.setDate(startDate.getDate() - 7);
-    }
+    orders.forEach(order => {
+      (order.items || []).forEach(item => {
+        const name = item.name || item.productId?.name || item.product?.name || 'Producto';
+        const qty = item.quantity || 1;
+        const revenue = (item.price || 0) * qty;
 
-    return orders
-      .filter(o => new Date(o.createdAt) >= startDate)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 20);
-  }, [orders, dateRange]);
+        if (productMap.has(name)) {
+          const existing = productMap.get(name);
+          productMap.set(name, {
+            name,
+            quantity: existing.quantity + qty,
+            revenue: existing.revenue + revenue,
+          });
+        } else {
+          productMap.set(name, { name, quantity: qty, revenue });
+        }
+      });
+    });
 
-  // Daily sales for chart (last 7 days)
+    return Array.from(productMap.values())
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 5);
+  }, [orders]);
+
+  // Payment methods breakdown
+  const paymentMethods = useMemo(() => {
+    const methods = { cash: 0, card: 0, transfer: 0, other: 0 };
+
+    orders.forEach(order => {
+      const method = order.paymentMethod || 'other';
+      if (methods.hasOwnProperty(method)) {
+        methods[method]++;
+      } else {
+        methods.other++;
+      }
+    });
+
+    const total = orders.length || 1;
+    return [
+      { name: 'Efectivo', count: methods.cash, percent: Math.round((methods.cash / total) * 100), icon: Banknote, color: 'emerald' },
+      { name: 'Tarjeta', count: methods.card, percent: Math.round((methods.card / total) * 100), icon: CreditCard, color: 'blue' },
+      { name: 'Transferencia', count: methods.transfer, percent: Math.round((methods.transfer / total) * 100), icon: CreditCard, color: 'purple' },
+    ].filter(m => m.count > 0);
+  }, [orders]);
+
+  // Daily sales for chart
   const dailySales = useMemo(() => {
     const days = [];
     const now = new Date();
-
     for (let i = 6; i >= 0; i--) {
       const date = new Date(now);
       date.setDate(date.getDate() - i);
       date.setHours(0, 0, 0, 0);
-
       const nextDate = new Date(date);
       nextDate.setDate(nextDate.getDate() + 1);
 
@@ -164,29 +176,38 @@ const Sales = () => {
         return orderDate >= date && orderDate < nextDate;
       });
 
-      const revenue = dayOrders.reduce((acc, o) => acc + (o.total || 0), 0);
-
       days.push({
         date,
         day: date.toLocaleDateString('es-MX', { weekday: 'short' }),
-        revenue,
+        revenue: dayOrders.reduce((acc, o) => acc + (o.total || 0), 0),
         orders: dayOrders.length,
       });
     }
-
     return days;
   }, [orders]);
 
   const maxRevenue = Math.max(...dailySales.map(d => d.revenue), 1);
 
+  // Filtered transactions
+  const recentTransactions = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let startDate = new Date(today);
+
+    if (dateRange === 'today') startDate = today;
+    else if (dateRange === 'week') startDate.setDate(startDate.getDate() - 7);
+    else startDate.setMonth(startDate.getMonth() - 1);
+
+    return orders
+      .filter(o => new Date(o.createdAt) >= startDate)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 15);
+  }, [orders, dateRange]);
+
   const formatDate = (dateString) => {
     if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-MX', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
+    return new Date(dateString).toLocaleDateString('es-MX', {
+      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
     });
   };
 
@@ -202,28 +223,20 @@ const Sales = () => {
   }
 
   return (
-    <div className="space-y-6 overflow-hidden max-w-full">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Ventas
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
-            Resumen de ventas y transacciones
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Ventas</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Resumen de ventas y transacciones</p>
         </div>
-        <Button
-          variant="ghost"
-          leftIcon={<RefreshCw size={18} />}
-          onClick={loadOrders}
-        >
+        <Button variant="ghost" leftIcon={<RefreshCw size={18} />} onClick={loadOrders}>
           Actualizar
         </Button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="!p-4">
           <div className="flex items-start justify-between">
             <div>
@@ -265,7 +278,7 @@ const Sales = () => {
                 <span className={`text-sm font-medium ${stats.week.change >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                   {Math.abs(stats.week.change)}%
                 </span>
-                <span className="text-xs text-gray-500">vs semana pasada</span>
+                <span className="text-xs text-gray-500">vs anterior</span>
               </div>
             </div>
             <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
@@ -290,7 +303,7 @@ const Sales = () => {
                 <span className={`text-sm font-medium ${stats.month.change >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                   {Math.abs(stats.month.change)}%
                 </span>
-                <span className="text-xs text-gray-500">vs mes pasado</span>
+                <span className="text-xs text-gray-500">vs anterior</span>
               </div>
             </div>
             <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
@@ -306,9 +319,7 @@ const Sales = () => {
               <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
                 ${stats.avgTicket.toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500 mt-2">
-                {orders.length} ordenes completadas
-              </p>
+              <p className="text-xs text-gray-500 mt-2">{orders.length} ordenes completadas</p>
             </div>
             <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center">
               <ShoppingCart size={20} className="text-amber-600" />
@@ -317,23 +328,20 @@ const Sales = () => {
         </Card>
       </div>
 
-      {/* Chart and Transactions */}
+      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Sales Chart */}
         <Card className="lg:col-span-2">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <BarChart3 size={18} />
-                Ventas Ultimos 7 Dias
+                <BarChart3 size={18} /> Ventas Ultimos 7 Dias
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-gray-500">
                 Total: ${dailySales.reduce((acc, d) => acc + d.revenue, 0).toLocaleString()}
               </p>
             </div>
           </div>
-
-          {/* Simple Bar Chart */}
           <div className="flex items-end justify-between gap-2 h-48">
             {dailySales.map((day, index) => (
               <div key={index} className="flex-1 flex flex-col items-center gap-2">
@@ -342,7 +350,7 @@ const Sales = () => {
                     ${day.revenue > 1000 ? `${(day.revenue / 1000).toFixed(1)}k` : day.revenue}
                   </span>
                   <div
-                    className="w-full max-w-[40px] bg-gradient-to-t from-indigo-600 to-indigo-400 rounded-t-lg transition-all duration-500"
+                    className="w-full max-w-[40px] bg-gradient-to-t from-indigo-600 to-indigo-400 rounded-t-lg transition-all"
                     style={{ height: `${(day.revenue / maxRevenue) * 100}%`, minHeight: day.revenue > 0 ? '8px' : '0' }}
                   />
                 </div>
@@ -352,100 +360,114 @@ const Sales = () => {
           </div>
         </Card>
 
-        {/* Quick Stats */}
+        {/* Top Products */}
         <Card>
-          <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
-            Resumen Rapido
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Award size={18} /> Top Productos
           </h3>
-          <div className="space-y-4">
-            <div className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Ordenes hoy</span>
-                <span className="font-semibold text-gray-900 dark:text-white">{stats.today.orders}</span>
-              </div>
+          {topProducts.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-4">Sin datos</p>
+          ) : (
+            <div className="space-y-3">
+              {topProducts.map((product, idx) => (
+                <div key={idx} className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+                  <div className="w-8 h-8 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center text-sm font-bold text-indigo-600">
+                    {idx + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{product.name}</p>
+                    <p className="text-xs text-gray-500">{product.quantity} vendidos</p>
+                  </div>
+                  <span className="text-sm font-semibold text-emerald-600">${product.revenue.toLocaleString()}</span>
+                </div>
+              ))}
             </div>
-            <div className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Ordenes semana</span>
-                <span className="font-semibold text-gray-900 dark:text-white">{stats.week.orders}</span>
-              </div>
-            </div>
-            <div className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Ordenes mes</span>
-                <span className="font-semibold text-gray-900 dark:text-white">{stats.month.orders}</span>
-              </div>
-            </div>
-            <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-emerald-700 dark:text-emerald-300">Total historico</span>
-                <span className="font-semibold text-emerald-700 dark:text-emerald-300">
-                  ${orders.reduce((acc, o) => acc + (o.total || 0), 0).toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </div>
+          )}
         </Card>
       </div>
 
-      {/* Recent Transactions */}
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-900 dark:text-white">
-            Transacciones Recientes
+      {/* Payment Methods & Transactions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Payment Methods */}
+        <Card>
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <CreditCard size={18} /> Metodos de Pago
           </h3>
-          <div className="flex gap-2">
-            {['today', 'week', 'month'].map((range) => (
-              <button
-                key={range}
-                onClick={() => setDateRange(range)}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                  dateRange === range
-                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-medium'
-                    : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700'
-                }`}
-              >
-                {range === 'today' ? 'Hoy' : range === 'week' ? 'Semana' : 'Mes'}
-              </button>
-            ))}
-          </div>
-        </div>
+          {paymentMethods.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-4">Sin datos</p>
+          ) : (
+            <div className="space-y-3">
+              {paymentMethods.map((method, idx) => (
+                <div key={idx} className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <method.icon size={16} className={`text-${method.color}-600`} />
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{method.name}</span>
+                    </div>
+                    <span className="text-sm text-gray-500">{method.count} ordenes</span>
+                  </div>
+                  <div className="h-2 bg-gray-200 dark:bg-slate-600 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full bg-${method.color}-500 rounded-full`}
+                      style={{ width: `${method.percent}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1 text-right">{method.percent}%</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
 
-        {recentTransactions.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            No hay transacciones en este periodo
+        {/* Recent Transactions */}
+        <Card className="lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-900 dark:text-white">Transacciones Recientes</h3>
+            <div className="flex gap-2">
+              {['today', 'week', 'month'].map((range) => (
+                <button
+                  key={range}
+                  onClick={() => setDateRange(range)}
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                    dateRange === range
+                      ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 font-medium'
+                      : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {range === 'today' ? 'Hoy' : range === 'week' ? 'Semana' : 'Mes'}
+                </button>
+              ))}
+            </div>
           </div>
-        ) : (
-          <div className="space-y-2">
-            {recentTransactions.map((order) => (
-              <div
-                key={order._id}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
-                    <DollarSign size={18} className="text-emerald-600" />
+          {recentTransactions.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">No hay transacciones en este periodo</div>
+          ) : (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {recentTransactions.map((order) => (
+                <div key={order._id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
+                      <DollarSign size={18} className="text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        Orden #{order.orderNumber || order._id?.toString()?.slice(-6)}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {order.customerId?.name || order.customer?.name || 'Cliente'} - {formatDate(order.createdAt)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      Orden #{order.orderNumber || order._id?.toString()?.slice(-6)}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {order.customer?.name || 'Cliente'} - {formatDate(order.createdAt)}
-                    </p>
+                  <div className="text-right">
+                    <p className="font-semibold text-emerald-600">+${order.total?.toLocaleString() || 0}</p>
+                    <Badge variant="success" size="sm">Completada</Badge>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold text-emerald-600 dark:text-emerald-400">
-                    +${order.total?.toLocaleString() || 0}
-                  </p>
-                  <Badge variant="success" size="sm">Completada</Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 };
