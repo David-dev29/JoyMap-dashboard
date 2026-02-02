@@ -62,20 +62,11 @@ const Reviews = () => {
   const fetchReviews = async () => {
     setLoading(true);
     try {
-      console.log('=== DEBUG Reviews ===');
-      console.log('Fetching reviews from:', ENDPOINTS.reviews.base);
-
       const response = await authFetch(ENDPOINTS.reviews.base);
       const data = await response.json();
 
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-      console.log('API Response:', data);
-
       if (response.ok) {
         const reviewsList = data.reviews || data.response || data.data || (Array.isArray(data) ? data : []);
-        console.log('Reviews extracted:', reviewsList);
-        console.log('Is Array:', Array.isArray(reviewsList));
         setReviews(Array.isArray(reviewsList) ? reviewsList : []);
       } else {
         throw new Error(data.message || 'Error al cargar resenas');

@@ -68,11 +68,7 @@ const ProductCategories = () => {
         setLoading(true);
         setError('');
 
-        console.log('=== DEBUG ProductCategories ===');
-        console.log('Selected Business:', selectedBusiness._id, selectedBusiness.name);
-
         const response = await getBusinessCategories(selectedBusiness._id, 'products');
-        console.log('API Response:', response);
 
         // Handle different response formats
         let categoriesData = [];
@@ -83,9 +79,6 @@ const ProductCategories = () => {
         } else if (Array.isArray(response)) {
           categoriesData = response;
         }
-
-        console.log('Categories extracted:', categoriesData);
-        console.log('Is Array:', Array.isArray(categoriesData));
 
         // Ensure it's an array before sorting
         if (Array.isArray(categoriesData)) {

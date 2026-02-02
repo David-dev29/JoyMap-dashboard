@@ -133,7 +133,7 @@ const WelcomePage = () => {
                   </span>
                   <input
                     type="text"
-                    defaultValue="https://kuma.encorto/products"
+                    defaultValue="https://joymap.com/products"
                     className="w-full border-none focus:outline-none"
                   />
                 </div>
@@ -177,7 +177,7 @@ const WelcomePage = () => {
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-gray-700">Mención Encorto</span>
+            <span className="text-gray-700">Mención JoyMap</span>
             <label className="relative inline-flex cursor-pointer items-center">
               <input type="checkbox" className="peer sr-only" />
               <div className="peer h-4 w-11 rounded-full border bg-slate-400 after:absolute after:-top-1 after:left-0 after:h-6 after:w-6 after:rounded-full after:border after:border-gray-400 after:bg-white after:transition-all peer-checked:bg-blue-500 peer-checked:after:translate-x-full"></div>

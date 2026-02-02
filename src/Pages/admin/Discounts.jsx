@@ -298,12 +298,32 @@ const Discounts = () => {
 
     const errors = {};
     if (!formData.code.trim()) errors.code = 'El codigo es requerido';
+    if (!formData.value || parseFloat(formData.value) < 0) errors.value = 'El valor no puede ser negativo';
     if (!formData.value || parseFloat(formData.value) <= 0) errors.value = 'El valor debe ser mayor a 0';
     if (formData.type === 'percentage' && parseFloat(formData.value) > 100) {
       errors.value = 'El porcentaje no puede ser mayor a 100';
     }
     if (!formData.startDate) errors.startDate = 'La fecha de inicio es requerida';
     if (!formData.endDate) errors.endDate = 'La fecha de fin es requerida';
+
+    // Validate date coherence
+    if (formData.startDate && formData.endDate) {
+      const start = new Date(formData.startDate);
+      const end = new Date(formData.endDate);
+      if (end < start) {
+        errors.endDate = 'La fecha fin debe ser posterior a la fecha inicio';
+      }
+    }
+
+    // Validate minOrder not negative
+    if (formData.minOrder && parseFloat(formData.minOrder) < 0) {
+      errors.minOrder = 'No puede ser negativo';
+    }
+
+    // Validate maxUses not negative
+    if (formData.maxUses && parseInt(formData.maxUses) < 0) {
+      errors.maxUses = 'No puede ser negativo';
+    }
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -498,16 +518,20 @@ const Discounts = () => {
         <Input
           label="Limite de usos"
           type="number"
+          min="0"
           placeholder="Ilimitado"
           value={formData.maxUses}
           onChange={(e) => setFormData({ ...formData, maxUses: e.target.value })}
+          error={formErrors.maxUses}
         />
         <Input
           label="Orden minima ($)"
           type="number"
+          min="0"
           placeholder="0"
           value={formData.minOrder}
           onChange={(e) => setFormData({ ...formData, minOrder: e.target.value })}
+          error={formErrors.minOrder}
         />
       </div>
 

@@ -64,10 +64,7 @@ const SalesHistory = () => {
     setLoading(true);
     try {
       const response = await authFetch(ENDPOINTS.orders.base);
-      console.log('=== DEBUG SalesHistory ===');
-
       const data = await response.json();
-      console.log('Orders API Response:', data);
 
       if (!response.ok) {
         throw new Error(data.message || 'Error al cargar órdenes');

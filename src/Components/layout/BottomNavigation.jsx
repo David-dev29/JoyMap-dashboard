@@ -10,6 +10,8 @@ import {
   HiOutlineShoppingBag,
   HiOutlineChartBar,
   HiOutlineMenu,
+  HiUsers,
+  HiOutlineUsers,
 } from 'react-icons/hi';
 import { useAuth } from '../../context/AuthContext';
 
@@ -76,11 +78,11 @@ const BottomNavigation = () => {
       path: '/admin/businesses'
     },
     {
-      id: 'orders',
-      icon: HiOutlineClipboardList,
-      activeIcon: HiClipboardList,
-      label: 'Pedidos',
-      path: '/admin/business/orders'
+      id: 'users',
+      icon: HiOutlineUsers,
+      activeIcon: HiUsers,
+      label: 'Usuarios',
+      path: '/admin/users'
     },
     {
       id: 'stats',
@@ -94,7 +96,7 @@ const BottomNavigation = () => {
       icon: HiOutlineMenu,
       activeIcon: HiMenu,
       label: 'Mas',
-      path: '/menu'
+      path: '/admin/menu'
     },
   ];
 

@@ -22,6 +22,7 @@ import AdminCustomers from './pages/admin/Customers';
 import AdminDiscounts from './pages/admin/Discounts';
 import AdminReviews from './pages/admin/Reviews';
 import AdminSalesHistory from './pages/admin/SalesHistory';
+import AdminMenu from './pages/admin/Menu';
 
 // Admin Business Management Pages
 import AdminBusinessProfile from './pages/admin/business/BusinessProfile';
@@ -140,6 +141,10 @@ const router = createBrowserRouter([
       {
         path: 'admin/sales/history',
         element: <AdminSalesHistory />,
+      },
+      {
+        path: 'admin/menu',
+        element: <AdminMenu />,
       },
 
       // ============================================

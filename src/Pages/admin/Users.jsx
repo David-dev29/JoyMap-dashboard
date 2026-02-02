@@ -269,15 +269,25 @@ const Users = () => {
   };
 
   // Handlers
+  // Phone validation: 10 digits for Mexico
+  const isValidPhone = (phone) => {
+    if (!phone) return true; // Optional field
+    const digitsOnly = phone.replace(/\D/g, '');
+    return digitsOnly.length === 10;
+  };
+
   const handleCreateUser = async () => {
     setFormErrors({});
 
     const errors = {};
     if (!formData.name.trim()) errors.name = 'El nombre es requerido';
     if (!formData.email.trim()) errors.email = 'El email es requerido';
-    if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = 'Email invalido';
-    if (!formData.password || formData.password.length < 6) {
-      errors.password = 'La contrasena debe tener al menos 6 caracteres';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) errors.email = 'Email invalido';
+    if (formData.phone && !isValidPhone(formData.phone)) {
+      errors.phone = 'El telefono debe tener 10 digitos';
+    }
+    if (!formData.password || formData.password.length < 8) {
+      errors.password = 'La contrasena debe tener al menos 8 caracteres';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -316,7 +326,13 @@ const Users = () => {
     const errors = {};
     if (!formData.name.trim()) errors.name = 'El nombre es requerido';
     if (!formData.email.trim()) errors.email = 'El email es requerido';
-    if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = 'Email invalido';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) errors.email = 'Email invalido';
+    if (formData.phone && !isValidPhone(formData.phone)) {
+      errors.phone = 'El telefono debe tener 10 digitos';
+    }
+    if (formData.password && formData.password.length < 8) {
+      errors.password = 'La contrasena debe tener al menos 8 caracteres';
+    }
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -332,7 +348,7 @@ const Users = () => {
         role: formData.role,
       };
 
-      if (formData.password && formData.password.length >= 6) {
+      if (formData.password && formData.password.length >= 8) {
         updateData.password = formData.password;
       }
 
@@ -473,9 +489,11 @@ const Users = () => {
       />
       <Input
         label="Telefono"
-        placeholder="+52 999 123 4567"
+        placeholder="10 digitos (ej: 9991234567)"
         value={formData.phone}
         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+        error={formErrors.phone}
+        helperText="10 digitos para Mexico"
       />
       <Select
         label="Rol"
@@ -491,7 +509,7 @@ const Users = () => {
       <Input
         label={isEdit ? 'Nueva contrasena (dejar vacio para no cambiar)' : 'Contrasena'}
         type={showPassword ? 'text' : 'password'}
-        placeholder="Minimo 6 caracteres"
+        placeholder="Minimo 8 caracteres"
         value={formData.password}
         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
         error={formErrors.password}

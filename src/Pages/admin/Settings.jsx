@@ -96,6 +96,10 @@ const MobileSettingCard = ({ title, icon: Icon, children, description }) => (
   </div>
 );
 
+// Validation helpers
+const isValidHexColor = (color) => /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color);
+const isValidUrl = (url) => !url || /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(url);
+
 const Settings = () => {
   const isMobile = useIsMobile();
   const [settings, setSettings] = useState(defaultSettings);
@@ -105,9 +109,67 @@ const Settings = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('general');
   const [uploadingLogo, setUploadingLogo] = useState(null);
+  const [validationErrors, setValidationErrors] = useState({});
 
   const logoInputRef = useRef(null);
   const logoTextInputRef = useRef(null);
+
+  // Validate settings and return errors
+  const validateSettings = () => {
+    const errors = {};
+
+    // Validate hex colors
+    if (settings.primaryColor && !isValidHexColor(settings.primaryColor)) {
+      errors.primaryColor = 'Formato invalido. Use #RRGGBB';
+    }
+    if (settings.secondaryColor && !isValidHexColor(settings.secondaryColor)) {
+      errors.secondaryColor = 'Formato invalido. Use #RRGGBB';
+    }
+
+    // Validate social media URLs
+    if (settings.socialMedia?.facebook && !isValidUrl(settings.socialMedia.facebook)) {
+      errors.facebook = 'URL invalida';
+    }
+    if (settings.socialMedia?.instagram && !isValidUrl(settings.socialMedia.instagram)) {
+      errors.instagram = 'URL invalida';
+    }
+    if (settings.socialMedia?.twitter && !isValidUrl(settings.socialMedia.twitter)) {
+      errors.twitter = 'URL invalida';
+    }
+    if (settings.socialMedia?.tiktok && !isValidUrl(settings.socialMedia.tiktok)) {
+      errors.tiktok = 'URL invalida';
+    }
+
+    // Validate legal URLs
+    if (settings.termsUrl && !isValidUrl(settings.termsUrl)) {
+      errors.termsUrl = 'URL invalida';
+    }
+    if (settings.privacyUrl && !isValidUrl(settings.privacyUrl)) {
+      errors.privacyUrl = 'URL invalida';
+    }
+
+    // Validate numeric fields (no negatives)
+    if (settings.deliveryFee < 0) {
+      errors.deliveryFee = 'No puede ser negativo';
+    }
+    if (settings.minOrderAmount < 0) {
+      errors.minOrderAmount = 'No puede ser negativo';
+    }
+    if (settings.maxDeliveryRadius < 0) {
+      errors.maxDeliveryRadius = 'No puede ser negativo';
+    }
+
+    return errors;
+  };
+
+  // Check for validation errors whenever settings change
+  useEffect(() => {
+    if (!loading) {
+      setValidationErrors(validateSettings());
+    }
+  }, [settings, loading]);
+
+  const hasValidationErrors = Object.keys(validationErrors).length > 0;
 
   // Load settings from API
   useEffect(() => {
@@ -151,6 +213,14 @@ const Settings = () => {
 
   // Save settings to API
   const handleSave = async () => {
+    const errors = validateSettings();
+    setValidationErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      setError('Hay errores de validacion. Revisa los campos marcados.');
+      return;
+    }
+
     setSaving(true);
     setSaved(false);
     setError(null);
@@ -353,9 +423,12 @@ const Settings = () => {
                     type="text"
                     value={settings.primaryColor}
                     onChange={(e) => setSettings({ ...settings, primaryColor: e.target.value })}
-                    className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl text-sm"
+                    className={`flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl text-sm ${validationErrors.primaryColor ? 'ring-2 ring-red-500' : ''}`}
                   />
                 </div>
+                {validationErrors.primaryColor && (
+                  <p className="text-xs text-red-500 mt-1">{validationErrors.primaryColor}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -372,9 +445,12 @@ const Settings = () => {
                     type="text"
                     value={settings.secondaryColor}
                     onChange={(e) => setSettings({ ...settings, secondaryColor: e.target.value })}
-                    className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl text-sm"
+                    className={`flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl text-sm ${validationErrors.secondaryColor ? 'ring-2 ring-red-500' : ''}`}
                   />
                 </div>
+                {validationErrors.secondaryColor && (
+                  <p className="text-xs text-red-500 mt-1">{validationErrors.secondaryColor}</p>
+                )}
               </div>
             </div>
 
@@ -391,26 +467,32 @@ const Settings = () => {
             <Input
               label="Costo de Envio ($)"
               type="number"
+              min="0"
               value={settings.deliveryFee}
-              onChange={(e) => setSettings({ ...settings, deliveryFee: parseFloat(e.target.value) || 0 })}
+              onChange={(e) => setSettings({ ...settings, deliveryFee: Math.max(0, parseFloat(e.target.value) || 0) })}
               placeholder="0"
               leftIcon={<DollarSign size={16} />}
+              error={validationErrors.deliveryFee}
             />
             <Input
               label="Pedido Minimo ($)"
               type="number"
+              min="0"
               value={settings.minOrderAmount}
-              onChange={(e) => setSettings({ ...settings, minOrderAmount: parseFloat(e.target.value) || 0 })}
+              onChange={(e) => setSettings({ ...settings, minOrderAmount: Math.max(0, parseFloat(e.target.value) || 0) })}
               placeholder="0"
               leftIcon={<DollarSign size={16} />}
+              error={validationErrors.minOrderAmount}
             />
             <Input
               label="Radio Maximo (km)"
               type="number"
+              min="0"
               value={settings.maxDeliveryRadius}
-              onChange={(e) => setSettings({ ...settings, maxDeliveryRadius: parseFloat(e.target.value) || 0 })}
+              onChange={(e) => setSettings({ ...settings, maxDeliveryRadius: Math.max(0, parseFloat(e.target.value) || 0) })}
               placeholder="10"
               leftIcon={<Truck size={16} />}
+              error={validationErrors.maxDeliveryRadius}
             />
             <div className="grid grid-cols-2 gap-3">
               <Input
@@ -435,24 +517,28 @@ const Settings = () => {
               value={settings.socialMedia?.facebook || ''}
               onChange={(e) => updateSocialMedia('facebook', e.target.value)}
               placeholder="https://facebook.com/..."
+              error={validationErrors.facebook}
             />
             <Input
               label="Instagram"
               value={settings.socialMedia?.instagram || ''}
               onChange={(e) => updateSocialMedia('instagram', e.target.value)}
               placeholder="https://instagram.com/..."
+              error={validationErrors.instagram}
             />
             <Input
               label="Twitter / X"
               value={settings.socialMedia?.twitter || ''}
               onChange={(e) => updateSocialMedia('twitter', e.target.value)}
               placeholder="https://twitter.com/..."
+              error={validationErrors.twitter}
             />
             <Input
               label="TikTok"
               value={settings.socialMedia?.tiktok || ''}
               onChange={(e) => updateSocialMedia('tiktok', e.target.value)}
               placeholder="https://tiktok.com/@..."
+              error={validationErrors.tiktok}
             />
           </MobileSettingCard>
 
@@ -551,12 +637,16 @@ const Settings = () => {
 
         {/* Sticky Save Button */}
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50">
+          {hasValidationErrors && (
+            <p className="text-xs text-red-500 text-center mb-2">Corrige los errores antes de guardar</p>
+          )}
           <Button
             className="w-full"
             leftIcon={saved ? <Check size={18} /> : <Save size={18} />}
             onClick={handleSave}
             loading={saving}
             variant={saved ? 'success' : 'primary'}
+            disabled={hasValidationErrors}
           >
             {saved ? 'Guardado!' : 'Guardar Cambios'}
           </Button>
@@ -584,6 +674,7 @@ const Settings = () => {
             onClick={handleSave}
             loading={saving}
             variant={saved ? 'success' : 'primary'}
+            disabled={hasValidationErrors}
           >
             {saved ? 'Guardado!' : 'Guardar Cambios'}
           </Button>
