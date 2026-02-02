@@ -18,9 +18,31 @@ import {
   Shield,
   Link,
   MessageCircle,
+  ChevronRight,
+  AlertTriangle,
 } from 'lucide-react';
 import { Card, Button, Input, Toggle, Spinner } from '../../components/ui';
 import { ENDPOINTS, authFetch } from '../../config/api';
+
+// Hook for mobile detection
+const useIsMobile = (breakpoint = 768) => {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < breakpoint);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [breakpoint]);
+
+  return isMobile;
+};
 
 // Default settings structure matching backend
 const defaultSettings = {
@@ -52,7 +74,30 @@ const defaultSettings = {
   privacyUrl: '',
 };
 
+// Mobile Section Card Component
+const MobileSettingCard = ({ title, icon: Icon, children, description }) => (
+  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-card overflow-hidden">
+    <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+          <Icon size={20} className="text-indigo-600 dark:text-indigo-400" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-white">{title}</h3>
+          {description && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
+          )}
+        </div>
+      </div>
+    </div>
+    <div className="p-4 space-y-4">
+      {children}
+    </div>
+  </div>
+);
+
 const Settings = () => {
+  const isMobile = useIsMobile();
   const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -74,11 +119,7 @@ const Settings = () => {
         const response = await authFetch(ENDPOINTS.settings.full);
         const data = await response.json();
 
-        console.log('=== DEBUG Settings: Loaded ===');
-        console.log('Response:', data);
-
         if (data.success && data.settings) {
-          // Merge with defaults to ensure all fields exist
           setSettings({
             ...defaultSettings,
             ...data.settings,
@@ -115,9 +156,6 @@ const Settings = () => {
     setError(null);
 
     try {
-      console.log('=== DEBUG Settings: Saving ===');
-      console.log('Settings:', settings);
-
       const response = await authFetch(ENDPOINTS.settings.base, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -125,7 +163,6 @@ const Settings = () => {
       });
 
       const data = await response.json();
-      console.log('Save response:', data);
 
       if (data.success || response.ok) {
         setSaved(true);
@@ -151,10 +188,7 @@ const Settings = () => {
     try {
       const formData = new FormData();
       formData.append('logo', file);
-      formData.append('type', type); // 'logo' or 'logoText'
-
-      console.log('=== DEBUG Settings: Uploading logo ===');
-      console.log('Type:', type);
+      formData.append('type', type);
 
       const response = await authFetch(ENDPOINTS.settings.uploadLogo, {
         method: 'POST',
@@ -162,7 +196,6 @@ const Settings = () => {
       });
 
       const data = await response.json();
-      console.log('Upload response:', data);
 
       if (data.success && data.url) {
         setSettings(prev => ({
@@ -220,6 +253,319 @@ const Settings = () => {
     );
   }
 
+  // Mobile Layout
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 -m-4 md:-m-6">
+        {/* Toast */}
+        {saved && (
+          <div className="fixed top-4 left-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg bg-emerald-500 text-white">
+            <Check size={18} />
+            Configuracion guardada
+          </div>
+        )}
+        {error && (
+          <div className="fixed top-4 left-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg bg-red-500 text-white">
+            <AlertCircle size={18} />
+            {error}
+          </div>
+        )}
+
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow-sm">
+          <div className="px-4 pt-4 pb-3">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+              Configuracion
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              {settings.appName || 'Plataforma'}
+            </p>
+          </div>
+        </div>
+
+        {/* Settings Sections */}
+        <div className="p-4 space-y-4 pb-28">
+          {/* Branding Card */}
+          <MobileSettingCard title="Branding" icon={Palette} description="Logo y colores">
+            <Input
+              label="Nombre de la App"
+              value={settings.appName}
+              onChange={(e) => setSettings({ ...settings, appName: e.target.value })}
+              placeholder="JoyMap"
+            />
+
+            {/* Logo Upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Logo
+              </label>
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-4 text-center">
+                {uploadingLogo === 'logo' ? (
+                  <Spinner size="md" className="mx-auto" />
+                ) : settings.logo ? (
+                  <div className="space-y-2">
+                    <img src={settings.logo} alt="Logo" className="h-16 mx-auto object-contain" />
+                    <div className="flex gap-2 justify-center">
+                      <button
+                        onClick={() => logoInputRef.current?.click()}
+                        className="text-sm text-indigo-600 dark:text-indigo-400 font-medium"
+                      >
+                        Cambiar
+                      </button>
+                      <button
+                        onClick={() => setSettings({ ...settings, logo: '' })}
+                        className="text-sm text-red-600 dark:text-red-400 font-medium"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => logoInputRef.current?.click()} className="w-full py-4">
+                    <Image size={32} className="mx-auto text-gray-400 mb-2" />
+                    <p className="text-sm text-gray-500">Subir logo</p>
+                  </button>
+                )}
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange('logo')}
+                  className="hidden"
+                />
+              </div>
+            </div>
+
+            {/* Colors */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Color Primario
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={settings.primaryColor}
+                    onChange={(e) => setSettings({ ...settings, primaryColor: e.target.value })}
+                    className="w-10 h-10 rounded-lg border-2 border-gray-200 dark:border-gray-700 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={settings.primaryColor}
+                    onChange={(e) => setSettings({ ...settings, primaryColor: e.target.value })}
+                    className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl text-sm"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Color Secundario
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={settings.secondaryColor}
+                    onChange={(e) => setSettings({ ...settings, secondaryColor: e.target.value })}
+                    className="w-10 h-10 rounded-lg border-2 border-gray-200 dark:border-gray-700 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={settings.secondaryColor}
+                    onChange={(e) => setSettings({ ...settings, secondaryColor: e.target.value })}
+                    className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <Input
+              label="Slogan"
+              value={settings.slogan}
+              onChange={(e) => setSettings({ ...settings, slogan: e.target.value })}
+              placeholder="Tu plataforma de delivery favorita"
+            />
+          </MobileSettingCard>
+
+          {/* Delivery Config Card */}
+          <MobileSettingCard title="Delivery" icon={Truck} description="Costos y limites">
+            <Input
+              label="Costo de Envio ($)"
+              type="number"
+              value={settings.deliveryFee}
+              onChange={(e) => setSettings({ ...settings, deliveryFee: parseFloat(e.target.value) || 0 })}
+              placeholder="0"
+              leftIcon={<DollarSign size={16} />}
+            />
+            <Input
+              label="Pedido Minimo ($)"
+              type="number"
+              value={settings.minOrderAmount}
+              onChange={(e) => setSettings({ ...settings, minOrderAmount: parseFloat(e.target.value) || 0 })}
+              placeholder="0"
+              leftIcon={<DollarSign size={16} />}
+            />
+            <Input
+              label="Radio Maximo (km)"
+              type="number"
+              value={settings.maxDeliveryRadius}
+              onChange={(e) => setSettings({ ...settings, maxDeliveryRadius: parseFloat(e.target.value) || 0 })}
+              placeholder="10"
+              leftIcon={<Truck size={16} />}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Moneda"
+                value={settings.currency}
+                onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
+                placeholder="MXN"
+              />
+              <Input
+                label="Simbolo"
+                value={settings.currencySymbol}
+                onChange={(e) => setSettings({ ...settings, currencySymbol: e.target.value })}
+                placeholder="$"
+              />
+            </div>
+          </MobileSettingCard>
+
+          {/* Social Media Card */}
+          <MobileSettingCard title="Redes Sociales" icon={Link} description="URLs de perfiles">
+            <Input
+              label="Facebook"
+              value={settings.socialMedia?.facebook || ''}
+              onChange={(e) => updateSocialMedia('facebook', e.target.value)}
+              placeholder="https://facebook.com/..."
+            />
+            <Input
+              label="Instagram"
+              value={settings.socialMedia?.instagram || ''}
+              onChange={(e) => updateSocialMedia('instagram', e.target.value)}
+              placeholder="https://instagram.com/..."
+            />
+            <Input
+              label="Twitter / X"
+              value={settings.socialMedia?.twitter || ''}
+              onChange={(e) => updateSocialMedia('twitter', e.target.value)}
+              placeholder="https://twitter.com/..."
+            />
+            <Input
+              label="TikTok"
+              value={settings.socialMedia?.tiktok || ''}
+              onChange={(e) => updateSocialMedia('tiktok', e.target.value)}
+              placeholder="https://tiktok.com/@..."
+            />
+          </MobileSettingCard>
+
+          {/* Contact Card */}
+          <MobileSettingCard title="Contacto" icon={Mail} description="Datos de contacto">
+            <Input
+              label="Email"
+              type="email"
+              value={settings.contactEmail}
+              onChange={(e) => setSettings({ ...settings, contactEmail: e.target.value })}
+              placeholder="contacto@joymap.com"
+              leftIcon={<Mail size={16} />}
+            />
+            <Input
+              label="Telefono"
+              value={settings.contactPhone}
+              onChange={(e) => setSettings({ ...settings, contactPhone: e.target.value })}
+              placeholder="+52 999 123 4567"
+              leftIcon={<Phone size={16} />}
+            />
+            <Input
+              label="WhatsApp"
+              value={settings.contactWhatsApp}
+              onChange={(e) => setSettings({ ...settings, contactWhatsApp: e.target.value })}
+              placeholder="+52 999 123 4567"
+              leftIcon={<MessageCircle size={16} />}
+            />
+            <Input
+              label="Direccion"
+              value={settings.address}
+              onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+              placeholder="Ciudad, Estado, Pais"
+              leftIcon={<MapPin size={16} />}
+            />
+          </MobileSettingCard>
+
+          {/* System Card */}
+          <MobileSettingCard title="Sistema" icon={Shield} description="Configuracion avanzada">
+            {/* Maintenance Mode */}
+            <div className={`p-4 rounded-xl ${settings.isMaintenanceMode ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800' : 'bg-gray-50 dark:bg-gray-700/50'}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {settings.isMaintenanceMode && (
+                    <AlertTriangle size={20} className="text-amber-500" />
+                  )}
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      Modo Mantenimiento
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {settings.isMaintenanceMode ? 'Activado - La app esta en mantenimiento' : 'Desactivado'}
+                    </p>
+                  </div>
+                </div>
+                <Toggle
+                  checked={settings.isMaintenanceMode}
+                  onChange={(checked) => setSettings({ ...settings, isMaintenanceMode: checked })}
+                />
+              </div>
+              {settings.isMaintenanceMode && (
+                <div className="mt-3">
+                  <textarea
+                    value={settings.maintenanceMessage}
+                    onChange={(e) => setSettings({ ...settings, maintenanceMessage: e.target.value })}
+                    placeholder="Mensaje para los usuarios..."
+                    rows={2}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-amber-200 dark:border-amber-800 rounded-xl text-sm resize-none"
+                  />
+                </div>
+              )}
+            </div>
+
+            <Input
+              label="Zona Horaria"
+              value={settings.timezone}
+              onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
+              placeholder="America/Mexico_City"
+              leftIcon={<Clock size={16} />}
+            />
+            <Input
+              label="URL Terminos"
+              value={settings.termsUrl}
+              onChange={(e) => setSettings({ ...settings, termsUrl: e.target.value })}
+              placeholder="https://..."
+              leftIcon={<Link size={16} />}
+            />
+            <Input
+              label="URL Privacidad"
+              value={settings.privacyUrl}
+              onChange={(e) => setSettings({ ...settings, privacyUrl: e.target.value })}
+              placeholder="https://..."
+              leftIcon={<Link size={16} />}
+            />
+          </MobileSettingCard>
+        </div>
+
+        {/* Sticky Save Button */}
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50">
+          <Button
+            className="w-full"
+            leftIcon={saved ? <Check size={18} /> : <Save size={18} />}
+            onClick={handleSave}
+            loading={saving}
+            variant={saved ? 'success' : 'primary'}
+          >
+            {saved ? 'Guardado!' : 'Guardar Cambios'}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop Layout (unchanged)
   return (
     <div className="space-y-6">
       {/* Header */}

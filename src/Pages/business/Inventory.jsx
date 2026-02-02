@@ -7,11 +7,39 @@ import {
   RefreshCw,
   AlertTriangle,
 } from 'lucide-react';
+import {
+  HiOutlineSearch,
+  HiOutlineRefresh,
+  HiOutlineCheck,
+  HiOutlineX,
+  HiOutlineCube,
+} from 'react-icons/hi';
 import { Card, Button, Input, Badge, Toggle } from '../../components/ui';
 import { getMyProducts, getMyCategories } from '../../services/api';
 import { authFetch, ENDPOINTS } from '../../config/api';
 
+// Custom hook for detecting mobile
+const useIsMobile = (breakpoint = 768) => {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < breakpoint);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [breakpoint]);
+
+  return isMobile;
+};
+
 const Inventory = () => {
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -151,6 +179,203 @@ const Inventory = () => {
     );
   }
 
+  // ============================================
+  // MOBILE VIEW
+  // ============================================
+  if (isMobile) {
+    const MobileProductCard = ({ product }) => (
+      <div className={`bg-white dark:bg-gray-900 rounded-2xl shadow-card overflow-hidden ${product.isAvailable === false ? 'opacity-75' : ''}`}>
+        <div className="flex items-center gap-3 p-3">
+          {/* Image */}
+          {product.image ? (
+            <img
+              src={product.image.startsWith('http') ? product.image : `https://${product.image}`}
+              alt={product.name}
+              className={`w-16 h-16 rounded-xl object-cover flex-shrink-0 ${product.isAvailable === false ? 'grayscale' : ''}`}
+            />
+          ) : (
+            <div className={`w-16 h-16 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0 ${product.isAvailable === false ? 'opacity-50' : ''}`}>
+              <HiOutlineCube className="w-7 h-7 text-primary-500" />
+            </div>
+          )}
+
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+              {product.name}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {getCategoryName(product)}
+            </p>
+            <p className="text-sm font-semibold text-primary-600 dark:text-primary-400 mt-0.5">
+              ${product.price?.toLocaleString() || 0}
+            </p>
+          </div>
+
+          {/* Toggle */}
+          <div className="flex flex-col items-center gap-1 flex-shrink-0">
+            <Toggle
+              checked={product.isAvailable !== false}
+              onChange={() => toggleAvailability(product)}
+            />
+            <span className={`text-xs ${product.isAvailable !== false ? 'text-emerald-600' : 'text-red-500'}`}>
+              {product.isAvailable !== false ? 'Activo' : 'Inactivo'}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+        {/* Mobile Header */}
+        <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+          <div className="px-4 py-3 flex items-center justify-between">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Inventario</h1>
+            <button
+              onClick={loadData}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+            >
+              <HiOutlineRefresh className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+
+          {/* Search */}
+          <div className="px-4 pb-3">
+            <div className="relative">
+              <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar productos..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-gray-800 border-0 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+          </div>
+
+          {/* Filter Tabs */}
+          <div className="flex overflow-x-auto scrollbar-hide px-4 pb-3 gap-2">
+            <button
+              onClick={() => setAvailabilityFilter('all')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-colors ${
+                availabilityFilter === 'all'
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+              }`}
+            >
+              <span>Todos</span>
+              <span className="px-1.5 py-0.5 bg-primary-200 dark:bg-primary-800 rounded-full text-xs">
+                {products.length}
+              </span>
+            </button>
+            <button
+              onClick={() => setAvailabilityFilter('available')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-colors ${
+                availabilityFilter === 'available'
+                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+              }`}
+            >
+              <HiOutlineCheck className="w-4 h-4" />
+              <span>Disponibles</span>
+              <span className="px-1.5 py-0.5 bg-emerald-200 dark:bg-emerald-800 rounded-full text-xs">
+                {availableCount}
+              </span>
+            </button>
+            <button
+              onClick={() => setAvailabilityFilter('unavailable')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-colors ${
+                availabilityFilter === 'unavailable'
+                  ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+              }`}
+            >
+              <HiOutlineX className="w-4 h-4" />
+              <span>No disponibles</span>
+              <span className="px-1.5 py-0.5 bg-red-200 dark:bg-red-800 rounded-full text-xs">
+                {unavailableCount}
+              </span>
+            </button>
+          </div>
+
+          {/* Category Filter */}
+          {categories.length > 0 && (
+            <div className="px-4 pb-3">
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-800 border-0 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="all">Todas las categorias</option>
+                {categories.map(cat => (
+                  <option key={cat._id} value={cat._id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        {/* Alert for unavailable products */}
+        {unavailableCount > 0 && availabilityFilter !== 'unavailable' && (
+          <div className="mx-4 mt-3 flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+            <AlertTriangle size={18} className="text-amber-600 flex-shrink-0" />
+            <p className="text-sm text-amber-800 dark:text-amber-200 flex-1">
+              {unavailableCount} producto{unavailableCount > 1 ? 's' : ''} no disponible{unavailableCount > 1 ? 's' : ''}
+            </p>
+            <button
+              onClick={() => setAvailabilityFilter('unavailable')}
+              className="text-sm font-medium text-amber-700 dark:text-amber-300"
+            >
+              Ver
+            </button>
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="p-4 space-y-3 pb-20">
+          {filteredProducts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                <HiOutlineCube className="w-8 h-8 text-gray-400" />
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 font-medium">
+                {searchTerm ? 'No se encontraron productos' : 'No hay productos'}
+              </p>
+            </div>
+          ) : (
+            filteredProducts.map((product) => (
+              <MobileProductCard key={product._id} product={product} />
+            ))
+          )}
+        </div>
+
+        {/* Bottom Stats Bar */}
+        {filteredProducts.length > 0 && (
+          <div className="fixed bottom-16 left-4 right-4 bg-white dark:bg-gray-900 rounded-xl shadow-lg px-4 py-3 z-10">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600 dark:text-gray-400">
+                {filteredProducts.length} de {products.length} productos
+              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setAllAvailable(true)}
+                  className="flex items-center gap-1 text-emerald-600 font-medium"
+                >
+                  <HiOutlineCheck className="w-4 h-4" />
+                  Activar todos
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ============================================
+  // DESKTOP VIEW
+  // ============================================
   return (
     <div className="space-y-6 overflow-hidden max-w-full">
       {/* Header */}

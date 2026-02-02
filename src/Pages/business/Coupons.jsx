@@ -16,16 +16,49 @@ import {
   Users,
   Copy,
 } from 'lucide-react';
+import {
+  HiOutlineTicket,
+  HiOutlinePlus,
+  HiOutlineClipboardCopy,
+  HiOutlinePencil,
+  HiOutlineTrash,
+  HiOutlineBan,
+  HiOutlineCheck,
+  HiOutlineSearch,
+} from 'react-icons/hi';
 import { toast } from 'sonner';
-import { Card, Button, Input, Badge, Table, Modal, Dropdown } from '../../components/ui';
+import { Card, Button, Input, Badge, Table, Modal, Dropdown, MobileModal } from '../../components/ui';
 import { authFetch, ENDPOINTS } from '../../config/api';
 
+// Custom hook for detecting mobile
+const useIsMobile = (breakpoint = 768) => {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < breakpoint);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [breakpoint]);
+
+  return isMobile;
+};
+
 const Coupons = () => {
+  const isMobile = useIsMobile();
+
   // State
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [mobileTab, setMobileTab] = useState('active'); // active, inactive, expired
 
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -314,6 +347,38 @@ const Coupons = () => {
     return { label: 'Activo', variant: 'success' };
   };
 
+  // Mobile tab filtering
+  const getMobileFilteredCoupons = () => {
+    let filtered = coupons;
+
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter((coupon) =>
+        coupon.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        coupon.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply tab filter
+    switch (mobileTab) {
+      case 'active':
+        return filtered.filter(c => c.isActive && !isExpired(c) && !isMaxUsesReached(c));
+      case 'inactive':
+        return filtered.filter(c => !c.isActive);
+      case 'expired':
+        return filtered.filter(c => isExpired(c) || isMaxUsesReached(c));
+      default:
+        return filtered;
+    }
+  };
+
+  // Mobile tab counts
+  const getTabCounts = () => ({
+    active: coupons.filter(c => c.isActive && !isExpired(c) && !isMaxUsesReached(c)).length,
+    inactive: coupons.filter(c => !c.isActive).length,
+    expired: coupons.filter(c => isExpired(c) || isMaxUsesReached(c)).length,
+  });
+
   // Form component (reused for create/edit)
   const CouponForm = () => (
     <div className="space-y-4">
@@ -425,6 +490,474 @@ const Coupons = () => {
     </div>
   );
 
+  // ============================================
+  // MOBILE VIEW
+  // ============================================
+  if (isMobile) {
+    const mobileFilteredCoupons = getMobileFilteredCoupons();
+    const tabCounts = getTabCounts();
+
+    const MobileCouponCard = ({ coupon }) => {
+      const status = getCouponStatus(coupon);
+
+      return (
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card p-4">
+          {/* Header with code and status */}
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <code className="text-lg font-bold font-mono text-primary-600 dark:text-primary-400">
+                  {coupon.code}
+                </code>
+                <button
+                  onClick={() => copyToClipboard(coupon.code)}
+                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                >
+                  <HiOutlineClipboardCopy className="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
+              {coupon.description && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">
+                  {coupon.description}
+                </p>
+              )}
+            </div>
+            <Badge variant={status.variant} size="sm">
+              {status.label}
+            </Badge>
+          </div>
+
+          {/* Discount display */}
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 mb-3">
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                {coupon.discountType === 'percentage' ? `${coupon.discount}%` : `$${coupon.discount}`}
+              </span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                de descuento
+              </span>
+            </div>
+          </div>
+
+          {/* Info row */}
+          <div className="flex items-center justify-between text-sm mb-4">
+            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+              <Users size={14} />
+              <span>
+                {coupon.usedCount || 0}{coupon.maxUses && ` / ${coupon.maxUses}`} usos
+              </span>
+            </div>
+            {coupon.expiresAt && (
+              <div className={`flex items-center gap-1 ${isExpired(coupon) ? 'text-red-500' : 'text-gray-600 dark:text-gray-400'}`}>
+                <Calendar size={14} />
+                <span>{formatDate(coupon.expiresAt)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => openEditModal(coupon)}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-medium text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            >
+              <HiOutlinePencil className="w-4 h-4" />
+              Editar
+            </button>
+            <button
+              onClick={() => handleToggleStatus(coupon)}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-medium text-sm transition-colors ${
+                coupon.isActive
+                  ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                  : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+              }`}
+            >
+              {coupon.isActive ? (
+                <>
+                  <HiOutlineBan className="w-4 h-4" />
+                  Desactivar
+                </>
+              ) : (
+                <>
+                  <HiOutlineCheck className="w-4 h-4" />
+                  Activar
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => openDeleteModal(coupon)}
+              className="p-2.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl transition-colors"
+            >
+              <HiOutlineTrash className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      );
+    };
+
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+        {/* Mobile Header */}
+        <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+          <div className="px-4 py-3">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Cupones</h1>
+          </div>
+
+          {/* Search */}
+          <div className="px-4 pb-3">
+            <div className="relative">
+              <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar cupones..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-gray-800 border-0 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex overflow-x-auto scrollbar-hide px-4 pb-3 gap-2">
+            <button
+              onClick={() => setMobileTab('active')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-colors ${
+                mobileTab === 'active'
+                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+              }`}
+            >
+              <span>Activos</span>
+              <span className="px-1.5 py-0.5 bg-emerald-200 dark:bg-emerald-800 rounded-full text-xs">
+                {tabCounts.active}
+              </span>
+            </button>
+            <button
+              onClick={() => setMobileTab('inactive')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-colors ${
+                mobileTab === 'inactive'
+                  ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+              }`}
+            >
+              <span>Inactivos</span>
+              <span className="px-1.5 py-0.5 bg-gray-300 dark:bg-gray-600 rounded-full text-xs">
+                {tabCounts.inactive}
+              </span>
+            </button>
+            <button
+              onClick={() => setMobileTab('expired')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-colors ${
+                mobileTab === 'expired'
+                  ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+              }`}
+            >
+              <span>Expirados</span>
+              <span className="px-1.5 py-0.5 bg-red-200 dark:bg-red-800 rounded-full text-xs">
+                {tabCounts.expired}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 space-y-3 pb-24">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-8 h-8 border-3 border-primary-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : mobileFilteredCoupons.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                <HiOutlineTicket className="w-8 h-8 text-gray-400" />
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 font-medium">
+                {searchQuery ? 'No se encontraron cupones' : 'No hay cupones en esta categoria'}
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                {!searchQuery && mobileTab === 'active' && 'Crea tu primer cupon con el boton +'}
+              </p>
+            </div>
+          ) : (
+            mobileFilteredCoupons.map((coupon) => (
+              <MobileCouponCard key={coupon._id} coupon={coupon} />
+            ))
+          )}
+        </div>
+
+        {/* FAB */}
+        <button
+          onClick={() => {
+            resetForm();
+            setIsCreateModalOpen(true);
+          }}
+          className="fixed bottom-20 right-4 w-14 h-14 bg-primary-600 text-white rounded-full shadow-lg flex items-center justify-center z-20 active:scale-95 transition-transform"
+        >
+          <HiOutlinePlus className="w-7 h-7" />
+        </button>
+
+        {/* Mobile Create Modal */}
+        <MobileModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          title="Nuevo Cupon"
+          size="xl"
+          fullHeight
+        >
+          <div className="space-y-4">
+            <Input
+              label="Codigo del cupon *"
+              value={formData.code}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+              placeholder="Ej: DESCUENTO20"
+              error={formErrors.code}
+              className="uppercase"
+            />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Tipo
+                </label>
+                <select
+                  value={formData.discountType}
+                  onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white"
+                >
+                  <option value="percentage">Porcentaje</option>
+                  <option value="fixed">Monto fijo</option>
+                </select>
+              </div>
+              <Input
+                label="Descuento *"
+                type="number"
+                value={formData.discount}
+                onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
+                placeholder={formData.discountType === 'percentage' ? '20' : '50'}
+                error={formErrors.discount}
+              />
+            </div>
+
+            <Input
+              label="Descripcion"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="20% de descuento en tu primer pedido"
+            />
+
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Pedido minimo"
+                type="number"
+                value={formData.minOrder}
+                onChange={(e) => setFormData({ ...formData, minOrder: e.target.value })}
+                placeholder="0"
+              />
+              <Input
+                label="Usos maximos"
+                type="number"
+                value={formData.maxUses}
+                onChange={(e) => setFormData({ ...formData, maxUses: e.target.value })}
+                placeholder="Sin limite"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Inicio
+                </label>
+                <input
+                  type="date"
+                  value={formData.startsAt}
+                  onChange={(e) => setFormData({ ...formData, startsAt: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Expira
+                </label>
+                <input
+                  type="date"
+                  value={formData.expiresAt}
+                  onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <label className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <input
+                type="checkbox"
+                checked={formData.isActive}
+                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                className="w-5 h-5 text-primary-600 rounded focus:ring-primary-500"
+              />
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">Cupon activo</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Disponible para usar inmediatamente
+                </p>
+              </div>
+            </label>
+          </div>
+          <MobileModal.Footer>
+            <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreateCoupon} loading={submitting}>Crear</Button>
+          </MobileModal.Footer>
+        </MobileModal>
+
+        {/* Mobile Edit Modal */}
+        <MobileModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedCoupon(null);
+            resetForm();
+          }}
+          title="Editar Cupon"
+          description={selectedCoupon?.code}
+          size="xl"
+          fullHeight
+        >
+          <div className="space-y-4">
+            <Input
+              label="Codigo del cupon *"
+              value={formData.code}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+              placeholder="Ej: DESCUENTO20"
+              error={formErrors.code}
+              className="uppercase"
+            />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Tipo
+                </label>
+                <select
+                  value={formData.discountType}
+                  onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white"
+                >
+                  <option value="percentage">Porcentaje</option>
+                  <option value="fixed">Monto fijo</option>
+                </select>
+              </div>
+              <Input
+                label="Descuento *"
+                type="number"
+                value={formData.discount}
+                onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
+                placeholder={formData.discountType === 'percentage' ? '20' : '50'}
+                error={formErrors.discount}
+              />
+            </div>
+
+            <Input
+              label="Descripcion"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="20% de descuento en tu primer pedido"
+            />
+
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Pedido minimo"
+                type="number"
+                value={formData.minOrder}
+                onChange={(e) => setFormData({ ...formData, minOrder: e.target.value })}
+                placeholder="0"
+              />
+              <Input
+                label="Usos maximos"
+                type="number"
+                value={formData.maxUses}
+                onChange={(e) => setFormData({ ...formData, maxUses: e.target.value })}
+                placeholder="Sin limite"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Inicio
+                </label>
+                <input
+                  type="date"
+                  value={formData.startsAt}
+                  onChange={(e) => setFormData({ ...formData, startsAt: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Expira
+                </label>
+                <input
+                  type="date"
+                  value={formData.expiresAt}
+                  onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <label className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <input
+                type="checkbox"
+                checked={formData.isActive}
+                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                className="w-5 h-5 text-primary-600 rounded focus:ring-primary-500"
+              />
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">Cupon activo</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Disponible para usar inmediatamente
+                </p>
+              </div>
+            </label>
+          </div>
+          <MobileModal.Footer>
+            <Button variant="ghost" onClick={() => {
+              setIsEditModalOpen(false);
+              setSelectedCoupon(null);
+              resetForm();
+            }}>Cancelar</Button>
+            <Button onClick={handleEditCoupon} loading={submitting}>Guardar</Button>
+          </MobileModal.Footer>
+        </MobileModal>
+
+        {/* Mobile Delete Modal */}
+        <MobileModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => {
+            setIsDeleteModalOpen(false);
+            setSelectedCoupon(null);
+          }}
+          title="Eliminar Cupon"
+          size="sm"
+        >
+          <p className="text-gray-600 dark:text-gray-300">
+            ¿Estas seguro de eliminar el cupon <strong className="text-gray-900 dark:text-white">{selectedCoupon?.code}</strong>? Esta accion no se puede deshacer.
+          </p>
+          <MobileModal.Footer>
+            <Button variant="ghost" onClick={() => {
+              setIsDeleteModalOpen(false);
+              setSelectedCoupon(null);
+            }}>Cancelar</Button>
+            <Button variant="danger" onClick={handleDeleteCoupon} loading={submitting}>Eliminar</Button>
+          </MobileModal.Footer>
+        </MobileModal>
+      </div>
+    );
+  }
+
+  // ============================================
+  // DESKTOP VIEW
+  // ============================================
   return (
     <div className="space-y-6 overflow-hidden max-w-full">
       {/* Header */}

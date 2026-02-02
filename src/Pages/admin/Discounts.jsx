@@ -14,9 +14,33 @@ import {
   CheckCircle,
   Check,
   AlertCircle,
+  ChevronRight,
+  Clock,
+  Infinity,
 } from 'lucide-react';
-import { Card, Button, Input, Select, Badge, Table, Modal, Dropdown } from '../../components/ui';
+import { Card, Button, Input, Select, Badge, Table, Modal, Dropdown, Toggle } from '../../components/ui';
+import MobileModal from '../../components/ui/MobileModal';
 import { authFetch, ENDPOINTS } from '../../config/api';
+
+// Hook for mobile detection
+const useIsMobile = (breakpoint = 768) => {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < breakpoint);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [breakpoint]);
+
+  return isMobile;
+};
 
 const statusConfig = {
   active: { label: 'Activo', color: 'success' },
@@ -25,12 +49,141 @@ const statusConfig = {
   disabled: { label: 'Deshabilitado', color: 'danger' },
 };
 
+const statusTabs = [
+  { key: 'all', label: 'Todos' },
+  { key: 'active', label: 'Activos' },
+  { key: 'disabled', label: 'Inactivos' },
+  { key: 'expired', label: 'Expirados' },
+];
+
+// Mobile Discount Card Component
+const MobileDiscountCard = ({ discount, onEdit, onDelete, onCopy, copiedCode, getBusinessName, formatDate }) => {
+  const [showActions, setShowActions] = useState(false);
+
+  const statusColorClasses = {
+    active: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+    expired: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+    scheduled: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    disabled: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-card overflow-hidden">
+      <button
+        onClick={() => setShowActions(!showActions)}
+        className="w-full p-4 text-left"
+      >
+        {/* Code Badge */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <code className="px-3 py-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg font-mono text-base font-bold">
+              {discount.code}
+            </code>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCopy(discount.code);
+              }}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            >
+              {copiedCode === discount.code ? (
+                <CheckCircle size={16} className="text-emerald-500" />
+              ) : (
+                <Copy size={16} className="text-gray-400" />
+              )}
+            </button>
+          </div>
+          <span className={`px-2 py-1 rounded-lg text-xs font-medium ${statusColorClasses[discount.status] || statusColorClasses.disabled}`}>
+            {statusConfig[discount.status]?.label || discount.status}
+          </span>
+        </div>
+
+        {/* Discount Value */}
+        <div className="flex items-center gap-2 mb-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${discount.type === 'percentage' ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'}`}>
+            {discount.type === 'percentage' ? (
+              <Percent size={20} className="text-purple-600 dark:text-purple-400" />
+            ) : (
+              <DollarSign size={20} className="text-emerald-600 dark:text-emerald-400" />
+            )}
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {discount.type === 'percentage' ? `${discount.value}%` : `$${discount.value}`}
+            </p>
+            {discount.minOrder > 0 && (
+              <p className="text-xs text-gray-500">Min. ${discount.minOrder}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Business */}
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 mb-2">
+          <Building2 size={14} className="text-gray-400" />
+          <span>{getBusinessName(discount)}</span>
+        </div>
+
+        {/* Uses */}
+        <div className="flex items-center justify-between text-sm mb-2">
+          <span className="text-gray-500">Usos:</span>
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-gray-900 dark:text-white">
+              {discount.usedCount || 0}
+            </span>
+            <span className="text-gray-500">
+              {discount.maxUses ? `/ ${discount.maxUses}` : '/ ∞'}
+            </span>
+            {discount.maxUses && (
+              <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full">
+                <div
+                  className="h-1.5 bg-indigo-500 rounded-full"
+                  style={{ width: `${Math.min(((discount.usedCount || 0) / discount.maxUses) * 100, 100)}%` }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Dates */}
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <Calendar size={14} />
+          <span>{formatDate(discount.startDate)} - {formatDate(discount.endDate)}</span>
+        </div>
+
+        <ChevronRight size={18} className={`absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition-transform ${showActions ? 'rotate-90' : ''}`} />
+      </button>
+
+      {/* Action drawer */}
+      {showActions && (
+        <div className="border-t border-gray-100 dark:border-gray-700 px-4 py-3 flex gap-2 bg-gray-50 dark:bg-gray-800/50">
+          <button
+            onClick={() => onEdit(discount)}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-white dark:bg-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm"
+          >
+            <Edit2 size={16} />
+            Editar
+          </button>
+          <button
+            onClick={() => onDelete(discount)}
+            className="flex items-center justify-center gap-2 py-2.5 px-3 bg-red-50 dark:bg-red-900/30 rounded-xl text-sm font-medium text-red-600 dark:text-red-400"
+          >
+            <Trash2 size={16} />
+            Eliminar
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Discounts = () => {
+  const isMobile = useIsMobile();
   const [discounts, setDiscounts] = useState([]);
   const [businesses, setBusinesses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [activeTab, setActiveTab] = useState('all');
   const [copiedCode, setCopiedCode] = useState(null);
 
   // Modal states
@@ -74,7 +227,6 @@ const Discounts = () => {
 
       if (response.ok) {
         const discountsList = data.discounts || data.response || data.data || (Array.isArray(data) ? data : []);
-        // Calculate status based on dates and isActive
         const discountsWithStatus = discountsList.map(d => ({
           ...d,
           status: getDiscountStatus(d),
@@ -106,7 +258,6 @@ const Discounts = () => {
     }
   };
 
-  // Calculate discount status based on dates and isActive
   const getDiscountStatus = (discount) => {
     if (!discount.isActive) return 'disabled';
     const now = new Date();
@@ -121,9 +272,16 @@ const Discounts = () => {
   // Filter discounts
   const filteredDiscounts = discounts.filter((discount) => {
     const matchesSearch = discount.code?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = !statusFilter || discount.status === statusFilter;
+    const currentStatusFilter = isMobile ? (activeTab === 'all' ? '' : activeTab) : statusFilter;
+    const matchesStatus = !currentStatusFilter || discount.status === currentStatusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // Count by status for tabs
+  const countByStatus = (status) => {
+    if (status === 'all') return discounts.length;
+    return discounts.filter(d => d.status === status).length;
+  };
 
   // Build business options for select
   const businessOptions = [
@@ -287,18 +445,267 @@ const Discounts = () => {
     return new Date(dateString).toLocaleDateString('es-ES', {
       day: '2-digit',
       month: 'short',
-      year: 'numeric',
     });
   };
 
-  // Get business name for display
   const getBusinessName = (discount) => {
-    if (!discount.businessId) return 'Todos los negocios';
+    if (!discount.businessId) return 'Global';
     if (typeof discount.businessId === 'object') return discount.businessId.name || 'Negocio';
     const business = businesses.find(b => b._id === discount.businessId);
     return business?.name || 'Negocio';
   };
 
+  // Form content for modals
+  const renderDiscountForm = () => (
+    <div className="space-y-4">
+      <Input
+        label="Codigo de descuento"
+        placeholder="Ej: PROMO20"
+        value={formData.code}
+        onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+        error={formErrors.code}
+        helperText="Solo letras mayusculas y numeros"
+      />
+
+      <div className="grid grid-cols-2 gap-3">
+        <Select
+          label="Tipo"
+          options={[
+            { value: 'percentage', label: 'Porcentaje (%)' },
+            { value: 'fixed', label: 'Monto fijo ($)' },
+          ]}
+          value={formData.type}
+          onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+        />
+        <Input
+          label={formData.type === 'percentage' ? 'Porcentaje' : 'Monto'}
+          type="number"
+          placeholder={formData.type === 'percentage' ? '20' : '50'}
+          value={formData.value}
+          onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+          error={formErrors.value}
+        />
+      </div>
+
+      <Select
+        label="Aplicar a"
+        options={businessOptions}
+        value={formData.businessId}
+        onChange={(e) => setFormData({ ...formData, businessId: e.target.value })}
+      />
+
+      <div className="grid grid-cols-2 gap-3">
+        <Input
+          label="Limite de usos"
+          type="number"
+          placeholder="Ilimitado"
+          value={formData.maxUses}
+          onChange={(e) => setFormData({ ...formData, maxUses: e.target.value })}
+        />
+        <Input
+          label="Orden minima ($)"
+          type="number"
+          placeholder="0"
+          value={formData.minOrder}
+          onChange={(e) => setFormData({ ...formData, minOrder: e.target.value })}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Input
+          label="Fecha inicio"
+          type="date"
+          value={formData.startDate}
+          onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+          error={formErrors.startDate}
+        />
+        <Input
+          label="Fecha fin"
+          type="date"
+          value={formData.endDate}
+          onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+          error={formErrors.endDate}
+        />
+      </div>
+    </div>
+  );
+
+  // Mobile Layout
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 -m-4 md:-m-6">
+        {/* Toast */}
+        {toast.show && (
+          <div className={`fixed top-4 left-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg ${
+            toast.type === 'success'
+              ? 'bg-emerald-500 text-white'
+              : 'bg-red-500 text-white'
+          }`}>
+            {toast.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
+            {toast.message}
+          </div>
+        )}
+
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow-sm">
+          {/* Title */}
+          <div className="px-4 pt-4 pb-3">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+              Descuentos
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              {filteredDiscounts.length} codigos
+            </p>
+          </div>
+
+          {/* Search */}
+          <div className="px-4 pb-3">
+            <div className="relative">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar codigo..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          {/* Status Tabs */}
+          <div className="px-4 pb-3 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-2 min-w-max">
+              {statusTabs.map((tab) => {
+                const count = countByStatus(tab.key);
+                const isActive = activeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+                      isActive
+                        ? 'bg-indigo-500 text-white shadow-md'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                    }`}
+                  >
+                    {tab.label}
+                    <span className={`px-1.5 py-0.5 rounded-full text-xs ${
+                      isActive
+                        ? 'bg-white/20 text-white'
+                        : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Discount List */}
+        <div className="p-4 space-y-3 pb-24">
+          {loading ? (
+            [...Array(4)].map((_, i) => (
+              <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl p-4 animate-pulse">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+                </div>
+                <div className="h-10 w-20 bg-gray-200 dark:bg-gray-700 rounded mb-3" />
+                <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+              </div>
+            ))
+          ) : filteredDiscounts.length === 0 ? (
+            <div className="text-center py-12">
+              <Tag size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+              <p className="text-gray-500 dark:text-gray-400">
+                {searchQuery || activeTab !== 'all'
+                  ? 'No se encontraron descuentos'
+                  : 'No hay descuentos registrados'
+                }
+              </p>
+            </div>
+          ) : (
+            filteredDiscounts.map((discount) => (
+              <MobileDiscountCard
+                key={discount._id}
+                discount={discount}
+                onEdit={openEditModal}
+                onDelete={openDeleteModal}
+                onCopy={copyCode}
+                copiedCode={copiedCode}
+                getBusinessName={getBusinessName}
+                formatDate={formatDate}
+              />
+            ))
+          )}
+        </div>
+
+        {/* FAB */}
+        <button
+          onClick={openCreateModal}
+          className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-500 text-white rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform z-50"
+        >
+          <Plus size={24} />
+        </button>
+
+        {/* Create/Edit Modal */}
+        <MobileModal
+          isOpen={isModalOpen}
+          onClose={closeModal}
+          title={editingDiscount ? 'Editar Descuento' : 'Nuevo Descuento'}
+          description={editingDiscount ? editingDiscount.code : 'Crea un nuevo codigo promocional'}
+          size="lg"
+        >
+          {renderDiscountForm()}
+          <MobileModal.Footer>
+            <Button variant="ghost" onClick={closeModal}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSubmit} loading={submitting}>
+              {editingDiscount ? 'Guardar' : 'Crear'}
+            </Button>
+          </MobileModal.Footer>
+        </MobileModal>
+
+        {/* Delete Modal */}
+        <MobileModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => {
+            setIsDeleteModalOpen(false);
+            setSelectedDiscount(null);
+          }}
+          title="Eliminar Descuento"
+          size="sm"
+        >
+          <div className="text-center py-4">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={28} className="text-red-600 dark:text-red-400" />
+            </div>
+            <p className="text-gray-600 dark:text-gray-300">
+              Estas seguro de eliminar el codigo <strong>{selectedDiscount?.code}</strong>?
+            </p>
+            <p className="text-sm text-gray-500 mt-2">
+              Esta accion no se puede deshacer.
+            </p>
+          </div>
+          <MobileModal.Footer>
+            <Button variant="ghost" onClick={() => {
+              setIsDeleteModalOpen(false);
+              setSelectedDiscount(null);
+            }}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={handleDelete} loading={submitting}>
+              Eliminar
+            </Button>
+          </MobileModal.Footer>
+        </MobileModal>
+      </div>
+    );
+  }
+
+  // Desktop Layout
   return (
     <div className="space-y-6">
       {/* Toast */}
@@ -506,79 +913,7 @@ const Discounts = () => {
         description={editingDiscount ? `Editando: ${editingDiscount.code}` : 'Crea un nuevo codigo de descuento'}
         size="lg"
       >
-        <div className="space-y-4">
-          <Input
-            label="Codigo de descuento"
-            placeholder="Ej: PROMO20"
-            value={formData.code}
-            onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-            error={formErrors.code}
-            helperText="Solo letras mayusculas y numeros"
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <Select
-              label="Tipo de descuento"
-              options={[
-                { value: 'percentage', label: 'Porcentaje (%)' },
-                { value: 'fixed', label: 'Monto fijo ($)' },
-              ]}
-              value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-            />
-            <Input
-              label={formData.type === 'percentage' ? 'Porcentaje' : 'Monto'}
-              type="number"
-              placeholder={formData.type === 'percentage' ? 'Ej: 20' : 'Ej: 50'}
-              value={formData.value}
-              onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-              error={formErrors.value}
-              rightIcon={formData.type === 'percentage' ? <Percent size={16} /> : <DollarSign size={16} />}
-            />
-          </div>
-
-          <Select
-            label="Aplicar a"
-            options={businessOptions}
-            value={formData.businessId}
-            onChange={(e) => setFormData({ ...formData, businessId: e.target.value })}
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Limite de usos (opcional)"
-              type="number"
-              placeholder="Sin limite"
-              value={formData.maxUses}
-              onChange={(e) => setFormData({ ...formData, maxUses: e.target.value })}
-            />
-            <Input
-              label="Orden minima (opcional)"
-              type="number"
-              placeholder="0"
-              value={formData.minOrder}
-              onChange={(e) => setFormData({ ...formData, minOrder: e.target.value })}
-              leftIcon={<DollarSign size={16} />}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Fecha de inicio"
-              type="date"
-              value={formData.startDate}
-              onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-              error={formErrors.startDate}
-            />
-            <Input
-              label="Fecha de fin"
-              type="date"
-              value={formData.endDate}
-              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-              error={formErrors.endDate}
-            />
-          </div>
-        </div>
+        {renderDiscountForm()}
         <Modal.Footer>
           <Button variant="ghost" onClick={closeModal}>
             Cancelar

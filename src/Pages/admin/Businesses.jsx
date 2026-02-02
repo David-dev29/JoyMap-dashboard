@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Building2,
   Plus,
@@ -19,9 +20,41 @@ import {
   Navigation,
   Smile,
   Image as ImageIcon,
+  Star,
+  ChevronRight,
 } from 'lucide-react';
+import {
+  HiOutlineSearch,
+  HiOutlinePlus,
+  HiOutlineRefresh,
+  HiOutlineDotsVertical,
+  HiOutlinePencil,
+  HiOutlineTrash,
+  HiOutlineUserAdd,
+  HiOutlineEye,
+  HiOutlineLocationMarker,
+  HiOutlineStar,
+  HiOutlineOfficeBuilding,
+} from 'react-icons/hi';
 import { Card, Button, Input, Select, Badge, Table, Modal, Avatar, Dropdown } from '../../components/ui';
+import MobileModal from '../../components/ui/MobileModal';
 import { authFetch, ENDPOINTS } from '../../config/api';
+
+// Custom hook for detecting mobile
+const useIsMobile = (breakpoint = 768) => {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < breakpoint);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [breakpoint]);
+
+  return isMobile;
+};
 
 const categoryIcons = {
   food: UtensilsCrossed,
@@ -50,7 +83,132 @@ const categoryColors = {
   envio: 'info',
 };
 
+// Mobile Business Card
+const MobileBusinessCard = ({ business, onView, onEdit, onAssignOwner, onToggleStatus, onDelete, getBusinessCategory, getBusinessStatus }) => {
+  const category = getBusinessCategory(business);
+  const status = getBusinessStatus(business);
+  const [showActions, setShowActions] = useState(false);
+  const CategoryIcon = categoryIcons[category] || Store;
+
+  return (
+    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card overflow-hidden">
+      {/* Header with Logo and Status */}
+      <div className="relative p-4 pb-3">
+        <div className="flex items-start gap-3">
+          {/* Avatar/Logo */}
+          <div className="w-14 h-14 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+            {business.logo ? (
+              <img src={business.logo} alt={business.name} className="w-full h-full object-cover" />
+            ) : business.emoji ? (
+              <span className="text-2xl">{business.emoji}</span>
+            ) : (
+              <HiOutlineOfficeBuilding className="w-7 h-7 text-gray-400" />
+            )}
+          </div>
+
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+              {business.name}
+            </h3>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                category === 'food' || category === 'comida'
+                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                  : category === 'store' || category === 'tienda'
+                  ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+              }`}>
+                <CategoryIcon size={12} />
+                {categoryLabels[category] || business.category?.name || 'Otro'}
+              </span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                status === 'active'
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+              }`}>
+                {status === 'active' ? 'Activo' : 'Inactivo'}
+              </span>
+            </div>
+          </div>
+
+          {/* Actions Menu */}
+          <button
+            onClick={() => setShowActions(!showActions)}
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            <HiOutlineDotsVertical className="w-5 h-5 text-gray-400" />
+          </button>
+        </div>
+
+        {/* Owner Info */}
+        {business.owner ? (
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+            <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-xs font-medium text-indigo-600">
+              {business.owner.name?.charAt(0) || 'O'}
+            </div>
+            <span className="text-xs text-gray-600 dark:text-gray-400 truncate">
+              {business.owner.name}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+            <span className="text-xs text-gray-400 italic">Sin owner asignado</span>
+          </div>
+        )}
+
+        {/* Address */}
+        {business.address && (
+          <div className="flex items-start gap-1.5 mt-2">
+            <HiOutlineLocationMarker className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+            <span className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
+              {business.address}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Actions Drawer */}
+      {showActions && (
+        <div className="border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-2 grid grid-cols-4 gap-1">
+          <button
+            onClick={() => { setShowActions(false); onView(business); }}
+            className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-colors"
+          >
+            <HiOutlineEye className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <span className="text-xs text-gray-600 dark:text-gray-400">Ver</span>
+          </button>
+          <button
+            onClick={() => { setShowActions(false); onEdit(business); }}
+            className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-colors"
+          >
+            <HiOutlinePencil className="w-5 h-5 text-indigo-600" />
+            <span className="text-xs text-indigo-600">Editar</span>
+          </button>
+          <button
+            onClick={() => { setShowActions(false); onAssignOwner(business); }}
+            className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-colors"
+          >
+            <HiOutlineUserAdd className="w-5 h-5 text-purple-600" />
+            <span className="text-xs text-purple-600">Owner</span>
+          </button>
+          <button
+            onClick={() => { setShowActions(false); onDelete(business); }}
+            className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-colors"
+          >
+            <HiOutlineTrash className="w-5 h-5 text-red-500" />
+            <span className="text-xs text-red-500">Eliminar</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Businesses = () => {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+
   // State
   const [businesses, setBusinesses] = useState([]);
   const [businessCategories, setBusinessCategories] = useState([]);
@@ -84,7 +242,7 @@ const Businesses = () => {
   const [submitting, setSubmitting] = useState(false);
 
   // Icon state (emoji or SVG)
-  const [iconType, setIconType] = useState('emoji'); // 'emoji' or 'svg'
+  const [iconType, setIconType] = useState('emoji');
   const [selectedEmoji, setSelectedEmoji] = useState('');
   const [svgCode, setSvgCode] = useState('');
   const [svgError, setSvgError] = useState('');
@@ -97,7 +255,6 @@ const Businesses = () => {
     '🌸', '🐕', '🎂', '🍦', '🥗', '🍱', '🥐', '🧁',
   ];
 
-  // Max SVG code size (50KB)
   const MAX_SVG_SIZE = 50 * 1024;
 
   // Toast state
@@ -150,7 +307,6 @@ const Businesses = () => {
       const response = await authFetch(`${ENDPOINTS.users.base}?role=business_owner`);
       const data = await response.json();
       const users = data.users || data.response || data.data || (Array.isArray(data) ? data : []);
-      // Filter users that don't have a business assigned
       const available = users.filter(u => !u.businessId && !u.business);
       setAvailableOwners(Array.isArray(available) ? available : []);
     } catch (error) {
@@ -187,17 +343,13 @@ const Businesses = () => {
     setSvgCode(code);
     setSvgError('');
 
-    if (!code.trim()) {
-      return;
-    }
+    if (!code.trim()) return;
 
-    // Validate size
     if (code.length > MAX_SVG_SIZE) {
       setSvgError(`El codigo SVG no puede superar los ${MAX_SVG_SIZE / 1024}KB`);
       return;
     }
 
-    // Validate SVG format
     const trimmedCode = code.trim();
     if (!trimmedCode.toLowerCase().startsWith('<svg') || !trimmedCode.toLowerCase().endsWith('</svg>')) {
       setSvgError('El codigo debe comenzar con <svg y terminar con </svg>');
@@ -205,14 +357,12 @@ const Businesses = () => {
     }
   };
 
-  // Check if SVG code is valid for preview
   const isValidSvg = (code) => {
     if (!code || !code.trim()) return false;
     const trimmed = code.trim().toLowerCase();
     return trimmed.startsWith('<svg') && trimmed.endsWith('</svg>') && code.length <= MAX_SVG_SIZE;
   };
 
-  // Reset icon state
   const resetIconState = () => {
     setIconType('emoji');
     setSelectedEmoji('');
@@ -269,11 +419,9 @@ const Businesses = () => {
 
     setSubmitting(true);
     try {
-      // Parse coordinates
       const lng = parseFloat(formData.longitude);
       const lat = parseFloat(formData.latitude);
 
-      // Build request body with location in GeoJSON format
       const requestBody = {
         name: formData.name,
         category: formData.category,
@@ -289,7 +437,6 @@ const Businesses = () => {
         isOpen: true,
       };
 
-      // Add icon data based on type
       if (iconType === 'svg' && isValidSvg(svgCode)) {
         requestBody.iconType = 'svg';
         requestBody.iconSvg = svgCode.trim();
@@ -335,12 +482,10 @@ const Businesses = () => {
 
     setSubmitting(true);
     try {
-      // Parse coordinates
       const lng = parseFloat(formData.longitude);
       const lat = parseFloat(formData.latitude);
       const hasValidCoords = !isNaN(lng) && !isNaN(lat) && (lng !== 0 || lat !== 0);
 
-      // Build request body
       const requestBody = {
         name: formData.name,
         category: formData.category,
@@ -350,7 +495,6 @@ const Businesses = () => {
         email: formData.email,
       };
 
-      // Add coordinates in both formats for compatibility
       if (hasValidCoords) {
         requestBody.coordinates = [lng, lat];
         requestBody.location = {
@@ -359,7 +503,6 @@ const Businesses = () => {
         };
       }
 
-      // Add icon data based on type
       if (iconType === 'svg' && isValidSvg(svgCode)) {
         requestBody.iconType = 'svg';
         requestBody.iconSvg = svgCode.trim();
@@ -367,7 +510,6 @@ const Businesses = () => {
         requestBody.iconType = 'emoji';
         requestBody.emoji = selectedEmoji;
       } else {
-        // Clear icon if nothing selected
         requestBody.iconType = null;
         requestBody.emoji = null;
         requestBody.iconSvg = null;
@@ -493,9 +635,6 @@ const Businesses = () => {
   const openEditModal = (business) => {
     setSelectedBusiness(business);
 
-    // Handle different coordinate formats:
-    // 1. coordinates: [lng, lat] - direct array
-    // 2. location: { type: 'Point', coordinates: [lng, lat] } - GeoJSON
     let coords = [];
     if (business.coordinates && Array.isArray(business.coordinates)) {
       coords = business.coordinates;
@@ -510,11 +649,10 @@ const Businesses = () => {
       address: business.address || '',
       phone: business.phone || '',
       email: business.email || '',
-      latitude: coords[1]?.toString() || '',   // lat is second element
-      longitude: coords[0]?.toString() || '',  // lng is first element
+      latitude: coords[1]?.toString() || '',
+      longitude: coords[0]?.toString() || '',
     });
 
-    // Load icon state
     if (business.iconType === 'svg' && business.iconSvg) {
       setIconType('svg');
       setSvgCode(business.iconSvg);
@@ -562,6 +700,468 @@ const Businesses = () => {
     })),
   ];
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-gray-500 dark:text-gray-400">Cargando negocios...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Mobile Layout
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
+        {/* Toast */}
+        {toast.show && (
+          <div className={`fixed top-4 left-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg ${
+            toast.type === 'success'
+              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+              : 'bg-red-50 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+          }`}>
+            {toast.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
+            {toast.message}
+          </div>
+        )}
+
+        {/* Sticky Search Bar */}
+        <div className="sticky top-0 z-30 bg-gray-50 dark:bg-gray-950 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 relative">
+              <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar negocios..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+            </div>
+            <button
+              onClick={fetchBusinesses}
+              className="p-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              <HiOutlineRefresh className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            </button>
+          </div>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="sticky top-[65px] z-20 bg-gray-50 dark:bg-gray-950">
+          <div className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide">
+            <button
+              onClick={() => setStatusFilter('')}
+              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                statusFilter === ''
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800'
+              }`}
+            >
+              Todos ({businesses.length})
+            </button>
+            <button
+              onClick={() => setStatusFilter('active')}
+              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                statusFilter === 'active'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800'
+              }`}
+            >
+              Activos ({businesses.filter(b => getBusinessStatus(b) === 'active').length})
+            </button>
+            <button
+              onClick={() => setStatusFilter('inactive')}
+              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                statusFilter === 'inactive'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800'
+              }`}
+            >
+              Inactivos ({businesses.filter(b => getBusinessStatus(b) === 'inactive').length})
+            </button>
+          </div>
+        </div>
+
+        {/* Businesses Grid */}
+        <div className="px-4 py-4">
+          {filteredBusinesses.length === 0 ? (
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card p-8 text-center">
+              <HiOutlineOfficeBuilding className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-500 dark:text-gray-400">
+                {searchQuery || statusFilter
+                  ? 'No hay negocios que coincidan'
+                  : 'No hay negocios registrados'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredBusinesses.map((business) => (
+                <MobileBusinessCard
+                  key={business._id}
+                  business={business}
+                  onView={openViewModal}
+                  onEdit={openEditModal}
+                  onAssignOwner={openAssignOwnerModal}
+                  onToggleStatus={handleToggleStatus}
+                  onDelete={openDeleteModal}
+                  getBusinessCategory={getBusinessCategory}
+                  getBusinessStatus={getBusinessStatus}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Results Count */}
+        <div className="px-4 py-2">
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+            {filteredBusinesses.length} de {businesses.length} negocios
+          </p>
+        </div>
+
+        {/* FAB */}
+        <button
+          onClick={() => {
+            resetForm();
+            setIsCreateModalOpen(true);
+          }}
+          className="fixed bottom-24 right-4 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-700 active:scale-95 transition-all z-40"
+        >
+          <HiOutlinePlus className="w-7 h-7" />
+        </button>
+
+        {/* Create Modal */}
+        <MobileModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          title="Nuevo Negocio"
+          size="xl"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Nombre *
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: Restaurante El Buen Sabor"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border ${formErrors.name ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-xl text-gray-900 dark:text-white`}
+              />
+              {formErrors.name && <p className="text-xs text-red-500 mt-1">{formErrors.name}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Categoria *
+              </label>
+              <select
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border ${formErrors.category ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-xl text-gray-900 dark:text-white`}
+              >
+                <option value="">Seleccionar categoria</option>
+                {businessCategories.map(cat => (
+                  <option key={cat._id} value={cat._id}>{cat.name}</option>
+                ))}
+              </select>
+              {formErrors.category && <p className="text-xs text-red-500 mt-1">{formErrors.category}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Direccion *
+              </label>
+              <input
+                type="text"
+                placeholder="Direccion del negocio"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border ${formErrors.address ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-xl text-gray-900 dark:text-white`}
+              />
+              {formErrors.address && <p className="text-xs text-red-500 mt-1">{formErrors.address}</p>}
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Coordenadas *
+                </label>
+                <button
+                  type="button"
+                  onClick={getCurrentLocation}
+                  disabled={gettingLocation}
+                  className="text-sm text-indigo-600 font-medium flex items-center gap-1"
+                >
+                  <Navigation size={14} />
+                  {gettingLocation ? 'Obteniendo...' : 'Usar mi ubicacion'}
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="number"
+                  placeholder="Latitud"
+                  value={formData.latitude}
+                  onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white"
+                  step="any"
+                />
+                <input
+                  type="number"
+                  placeholder="Longitud"
+                  value={formData.longitude}
+                  onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white"
+                  step="any"
+                />
+              </div>
+              {formErrors.coordinates && <p className="text-xs text-red-500 mt-1">{formErrors.coordinates}</p>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Telefono
+                </label>
+                <input
+                  type="tel"
+                  placeholder="+52 999 123 4567"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  placeholder="email@negocio.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            {/* Emoji Selector */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Icono del negocio
+              </label>
+              <div className="grid grid-cols-8 gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl max-h-32 overflow-y-auto">
+                {COMMON_EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setSelectedEmoji(emoji)}
+                    className={`w-9 h-9 flex items-center justify-center text-xl rounded-lg transition-all ${
+                      selectedEmoji === emoji
+                        ? 'bg-indigo-100 dark:bg-indigo-900/50 ring-2 ring-indigo-500'
+                        : 'hover:bg-gray-200 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+              {selectedEmoji && (
+                <div className="flex items-center gap-2 mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  <span>Seleccionado: {selectedEmoji}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEmoji('')}
+                    className="text-red-500 underline text-xs"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <MobileModal.Footer>
+            <button
+              onClick={() => setIsCreateModalOpen(false)}
+              className="flex-1 px-4 py-3 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleCreateBusiness}
+              disabled={submitting}
+              className="flex-1 px-4 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {submitting ? 'Creando...' : 'Crear Negocio'}
+            </button>
+          </MobileModal.Footer>
+        </MobileModal>
+
+        {/* Delete Modal */}
+        <MobileModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          title="Eliminar Negocio"
+          size="sm"
+        >
+          <p className="text-gray-600 dark:text-gray-300 text-center py-4">
+            ¿Estas seguro de eliminar <strong>{selectedBusiness?.name}</strong>?
+            <br />
+            <span className="text-sm text-gray-500">Esta accion no se puede deshacer.</span>
+          </p>
+          <MobileModal.Footer>
+            <button
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="flex-1 px-4 py-3 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleDeleteBusiness}
+              disabled={submitting}
+              className="flex-1 px-4 py-3 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 disabled:opacity-50"
+            >
+              {submitting ? 'Eliminando...' : 'Eliminar'}
+            </button>
+          </MobileModal.Footer>
+        </MobileModal>
+
+        {/* Assign Owner Modal */}
+        <MobileModal
+          isOpen={isAssignOwnerModalOpen}
+          onClose={() => setIsAssignOwnerModalOpen(false)}
+          title="Asignar Owner"
+          description={selectedBusiness?.name}
+          size="md"
+        >
+          <div className="space-y-2">
+            {availableOwners.length === 0 ? (
+              <div className="text-center py-8">
+                <UserPlus size={40} className="mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+                <p className="text-gray-500">No hay owners disponibles</p>
+                <p className="text-sm text-gray-400">Crea un usuario con rol "business_owner" primero</p>
+              </div>
+            ) : (
+              availableOwners.map((owner) => (
+                <button
+                  key={owner._id}
+                  onClick={() => handleAssignOwner(owner._id)}
+                  disabled={submitting}
+                  className="w-full flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 font-semibold">
+                    {owner.name?.charAt(0) || 'O'}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="font-medium text-gray-900 dark:text-white">{owner.name}</p>
+                    <p className="text-sm text-gray-500">{owner.email}</p>
+                  </div>
+                  <ChevronRight size={18} className="text-gray-400" />
+                </button>
+              ))
+            )}
+          </div>
+        </MobileModal>
+
+        {/* View Modal */}
+        <MobileModal
+          isOpen={isViewModalOpen}
+          onClose={() => setIsViewModalOpen(false)}
+          title="Detalles del Negocio"
+          size="lg"
+        >
+          {selectedBusiness && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                  {selectedBusiness.logo ? (
+                    <img src={selectedBusiness.logo} alt={selectedBusiness.name} className="w-full h-full object-cover" />
+                  ) : selectedBusiness.emoji ? (
+                    <span className="text-3xl">{selectedBusiness.emoji}</span>
+                  ) : (
+                    <HiOutlineOfficeBuilding className="w-8 h-8 text-gray-400" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {selectedBusiness.name}
+                  </h3>
+                  <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                    getBusinessStatus(selectedBusiness) === 'active'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                  }`}>
+                    {getBusinessStatus(selectedBusiness) === 'active' ? 'Activo' : 'Inactivo'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+                {selectedBusiness.description && (
+                  <div>
+                    <label className="text-xs text-gray-500 dark:text-gray-400">Descripcion</label>
+                    <p className="text-gray-900 dark:text-white">{selectedBusiness.description}</p>
+                  </div>
+                )}
+                {selectedBusiness.address && (
+                  <div>
+                    <label className="text-xs text-gray-500 dark:text-gray-400">Direccion</label>
+                    <p className="text-gray-900 dark:text-white flex items-start gap-2">
+                      <MapPin size={16} className="text-gray-400 mt-0.5" />
+                      {selectedBusiness.address}
+                    </p>
+                  </div>
+                )}
+                {selectedBusiness.phone && (
+                  <div>
+                    <label className="text-xs text-gray-500 dark:text-gray-400">Telefono</label>
+                    <p className="text-gray-900 dark:text-white">{selectedBusiness.phone}</p>
+                  </div>
+                )}
+                {selectedBusiness.email && (
+                  <div>
+                    <label className="text-xs text-gray-500 dark:text-gray-400">Email</label>
+                    <p className="text-gray-900 dark:text-white">{selectedBusiness.email}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs text-gray-500 dark:text-gray-400">Owner Asignado</label>
+                  <p className="text-gray-900 dark:text-white">
+                    {selectedBusiness.owner?.name || 'Sin asignar'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          <MobileModal.Footer>
+            <button
+              onClick={() => setIsViewModalOpen(false)}
+              className="flex-1 px-4 py-3 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              Cerrar
+            </button>
+            <button
+              onClick={() => {
+                setIsViewModalOpen(false);
+                openEditModal(selectedBusiness);
+              }}
+              className="flex-1 px-4 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700"
+            >
+              Editar
+            </button>
+          </MobileModal.Footer>
+        </MobileModal>
+      </div>
+    );
+  }
+
+  // Desktop Layout (Original - kept unchanged)
   return (
     <div className="space-y-6 overflow-hidden max-w-full">
       {/* Toast */}
@@ -647,9 +1247,7 @@ const Businesses = () => {
               </Table.Row>
             </Table.Head>
             <Table.Body>
-              {loading ? (
-                <Table.Loading colSpan={5} />
-              ) : filteredBusinesses.length === 0 ? (
+              {filteredBusinesses.length === 0 ? (
                 <Table.Empty
                   colSpan={5}
                   message={searchQuery || categoryFilter || statusFilter
@@ -787,15 +1385,13 @@ const Businesses = () => {
       </Card>
 
       {/* Results count */}
-      {!loading && (
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Mostrando {filteredBusinesses.length} de {businesses.length} negocios
-        </p>
-      )}
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        Mostrando {filteredBusinesses.length} de {businesses.length} negocios
+      </p>
 
-      {/* Create Modal */}
+      {/* Desktop Create Modal */}
       <Modal
-        isOpen={isCreateModalOpen}
+        isOpen={isCreateModalOpen && !isMobile}
         onClose={() => setIsCreateModalOpen(false)}
         title="Nuevo Negocio"
         description="Agrega un nuevo negocio a la plataforma"
@@ -823,12 +1419,6 @@ const Businesses = () => {
             />
           </div>
           <Input
-            label="Descripcion"
-            placeholder="Descripcion breve del negocio..."
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          />
-          <Input
             label="Direccion"
             placeholder="Direccion del negocio"
             value={formData.address}
@@ -836,7 +1426,6 @@ const Businesses = () => {
             error={formErrors.address}
             leftIcon={<MapPin size={18} />}
           />
-          {/* Coordinates */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -889,123 +1478,38 @@ const Businesses = () => {
             />
           </div>
 
-          {/* Icon Selector */}
-          <div className="space-y-3">
+          {/* Emoji Selector */}
+          <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Icono del negocio (para el mapa)
             </label>
-
-            {/* Tabs */}
-            <div className="flex gap-2 p-1 bg-gray-100 dark:bg-slate-700 rounded-lg">
-              <button
-                type="button"
-                onClick={() => setIconType('emoji')}
-                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                  iconType === 'emoji'
-                    ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                <Smile size={16} />
-                Emoji
-              </button>
-              <button
-                type="button"
-                onClick={() => setIconType('svg')}
-                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                  iconType === 'svg'
-                    ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                <ImageIcon size={16} />
-                SVG Personalizado
-              </button>
+            <div className="grid grid-cols-8 gap-2 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg max-h-32 overflow-y-auto">
+              {COMMON_EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => setSelectedEmoji(emoji)}
+                  className={`w-9 h-9 flex items-center justify-center text-xl rounded-lg transition-all hover:bg-gray-200 dark:hover:bg-slate-600 ${
+                    selectedEmoji === emoji
+                      ? 'bg-indigo-100 dark:bg-indigo-900/50 ring-2 ring-indigo-500'
+                      : ''
+                  }`}
+                >
+                  {emoji}
+                </button>
+              ))}
             </div>
-
-            {/* Emoji Selector */}
-            {iconType === 'emoji' && (
-              <div className="space-y-2">
-                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg max-h-32 overflow-y-auto">
-                  {COMMON_EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => setSelectedEmoji(emoji)}
-                      className={`w-9 h-9 flex items-center justify-center text-xl rounded-lg transition-all hover:bg-gray-200 dark:hover:bg-slate-600 ${
-                        selectedEmoji === emoji
-                          ? 'bg-indigo-100 dark:bg-indigo-900/50 ring-2 ring-indigo-500'
-                          : ''
-                      }`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-                {selectedEmoji && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                    <span>Seleccionado:</span>
-                    <span className="text-2xl">{selectedEmoji}</span>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedEmoji('')}
-                      className="text-red-500 hover:text-red-600 text-xs underline"
-                    >
-                      Quitar
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* SVG Code Input */}
-            {iconType === 'svg' && (
-              <div className="space-y-3">
-                <textarea
-                  value={svgCode}
-                  onChange={(e) => handleSvgCodeChange(e.target.value)}
-                  placeholder="Pega aqui el codigo SVG...&#10;&#10;Ejemplo:&#10;<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>...</svg>"
-                  className={`w-full h-32 px-3 py-2 text-sm font-mono bg-gray-50 dark:bg-slate-700 border rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                    svgError
-                      ? 'border-red-500 dark:border-red-500'
-                      : 'border-gray-200 dark:border-slate-600'
-                  } text-gray-900 dark:text-white placeholder-gray-400`}
-                />
-                {svgError && (
-                  <p className="text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle size={14} />
-                    {svgError}
-                  </p>
-                )}
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Puedes copiar SVGs de sitios como Heroicons, Lucide, FontAwesome, etc.
-                </p>
-
-                {/* Preview */}
-                {isValidSvg(svgCode) && (
-                  <div className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Vista previa:</p>
-                    <div className="flex items-center justify-center">
-                      <div
-                        className="w-16 h-16 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:max-w-full [&>svg]:max-h-full"
-                        dangerouslySetInnerHTML={{ __html: svgCode }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {svgCode && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSvgCode('');
-                      setSvgError('');
-                    }}
-                    className="text-sm text-red-500 hover:text-red-600 underline"
-                  >
-                    Limpiar codigo
-                  </button>
-                )}
+            {selectedEmoji && (
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <span>Seleccionado:</span>
+                <span className="text-2xl">{selectedEmoji}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedEmoji('')}
+                  className="text-red-500 hover:text-red-600 text-xs underline"
+                >
+                  Quitar
+                </button>
               </div>
             )}
           </div>
@@ -1020,234 +1524,9 @@ const Businesses = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* Edit Modal */}
+      {/* Desktop Delete Modal */}
       <Modal
-        isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setSelectedBusiness(null);
-          resetForm();
-        }}
-        title="Editar Negocio"
-        description={`Editando: ${selectedBusiness?.name}`}
-        size="lg"
-      >
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Nombre del negocio"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              error={formErrors.name}
-            />
-            <Select
-              label="Categoria"
-              options={businessCategories.map(cat => ({
-                value: cat._id,
-                label: cat.name,
-              }))}
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-            />
-          </div>
-          <Input
-            label="Descripcion"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          />
-          <Input
-            label="Direccion"
-            value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-            error={formErrors.address}
-            leftIcon={<MapPin size={18} />}
-          />
-          {/* Coordinates */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Coordenadas
-              </label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                leftIcon={<Navigation size={16} />}
-                onClick={getCurrentLocation}
-                loading={gettingLocation}
-              >
-                Obtener mi ubicacion
-              </Button>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                placeholder="Latitud"
-                value={formData.latitude}
-                onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
-                type="number"
-                step="any"
-              />
-              <Input
-                placeholder="Longitud"
-                value={formData.longitude}
-                onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
-                type="number"
-                step="any"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Telefono"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            />
-            <Input
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            />
-          </div>
-
-          {/* Icon Selector */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Icono del negocio (para el mapa)
-            </label>
-
-            {/* Tabs */}
-            <div className="flex gap-2 p-1 bg-gray-100 dark:bg-slate-700 rounded-lg">
-              <button
-                type="button"
-                onClick={() => setIconType('emoji')}
-                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                  iconType === 'emoji'
-                    ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                <Smile size={16} />
-                Emoji
-              </button>
-              <button
-                type="button"
-                onClick={() => setIconType('svg')}
-                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                  iconType === 'svg'
-                    ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                <ImageIcon size={16} />
-                SVG Personalizado
-              </button>
-            </div>
-
-            {/* Emoji Selector */}
-            {iconType === 'emoji' && (
-              <div className="space-y-2">
-                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg max-h-32 overflow-y-auto">
-                  {COMMON_EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => setSelectedEmoji(emoji)}
-                      className={`w-9 h-9 flex items-center justify-center text-xl rounded-lg transition-all hover:bg-gray-200 dark:hover:bg-slate-600 ${
-                        selectedEmoji === emoji
-                          ? 'bg-indigo-100 dark:bg-indigo-900/50 ring-2 ring-indigo-500'
-                          : ''
-                      }`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-                {selectedEmoji && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                    <span>Seleccionado:</span>
-                    <span className="text-2xl">{selectedEmoji}</span>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedEmoji('')}
-                      className="text-red-500 hover:text-red-600 text-xs underline"
-                    >
-                      Quitar
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* SVG Code Input */}
-            {iconType === 'svg' && (
-              <div className="space-y-3">
-                <textarea
-                  value={svgCode}
-                  onChange={(e) => handleSvgCodeChange(e.target.value)}
-                  placeholder="Pega aqui el codigo SVG...&#10;&#10;Ejemplo:&#10;<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>...</svg>"
-                  className={`w-full h-32 px-3 py-2 text-sm font-mono bg-gray-50 dark:bg-slate-700 border rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                    svgError
-                      ? 'border-red-500 dark:border-red-500'
-                      : 'border-gray-200 dark:border-slate-600'
-                  } text-gray-900 dark:text-white placeholder-gray-400`}
-                />
-                {svgError && (
-                  <p className="text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle size={14} />
-                    {svgError}
-                  </p>
-                )}
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Puedes copiar SVGs de sitios como Heroicons, Lucide, FontAwesome, etc.
-                </p>
-
-                {/* Preview */}
-                {isValidSvg(svgCode) && (
-                  <div className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Vista previa:</p>
-                    <div className="flex items-center justify-center">
-                      <div
-                        className="w-16 h-16 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:max-w-full [&>svg]:max-h-full"
-                        dangerouslySetInnerHTML={{ __html: svgCode }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {svgCode && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSvgCode('');
-                      setSvgError('');
-                    }}
-                    className="text-sm text-red-500 hover:text-red-600 underline"
-                  >
-                    Limpiar codigo
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-        <Modal.Footer>
-          <Button variant="ghost" onClick={() => {
-            setIsEditModalOpen(false);
-            setSelectedBusiness(null);
-            resetForm();
-          }}>
-            Cancelar
-          </Button>
-          <Button onClick={handleEditBusiness} loading={submitting}>
-            Guardar Cambios
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Delete Modal */}
-      <Modal
-        isOpen={isDeleteModalOpen}
+        isOpen={isDeleteModalOpen && !isMobile}
         onClose={() => {
           setIsDeleteModalOpen(false);
           setSelectedBusiness(null);
@@ -1271,9 +1550,9 @@ const Businesses = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* Assign Owner Modal */}
+      {/* Desktop Assign Owner Modal */}
       <Modal
-        isOpen={isAssignOwnerModalOpen}
+        isOpen={isAssignOwnerModalOpen && !isMobile}
         onClose={() => {
           setIsAssignOwnerModalOpen(false);
           setSelectedBusiness(null);
@@ -1307,9 +1586,9 @@ const Businesses = () => {
         </div>
       </Modal>
 
-      {/* View Modal */}
+      {/* Desktop View Modal */}
       <Modal
-        isOpen={isViewModalOpen}
+        isOpen={isViewModalOpen && !isMobile}
         onClose={() => {
           setIsViewModalOpen(false);
           setSelectedBusiness(null);
@@ -1362,15 +1641,6 @@ const Businesses = () => {
                 <div className="col-span-2">
                   <label className="text-sm text-gray-500 dark:text-gray-400">Direccion</label>
                   <p className="mt-1 text-gray-900 dark:text-white">{selectedBusiness.address}</p>
-                </div>
-              )}
-              {selectedBusiness.coordinates && selectedBusiness.coordinates.length >= 2 && (
-                <div className="col-span-2">
-                  <label className="text-sm text-gray-500 dark:text-gray-400">Coordenadas</label>
-                  <p className="mt-1 text-gray-900 dark:text-white flex items-center gap-2">
-                    <MapPin size={16} className="text-gray-400" />
-                    {selectedBusiness.coordinates[1]}, {selectedBusiness.coordinates[0]}
-                  </p>
                 </div>
               )}
               {selectedBusiness.phone && (

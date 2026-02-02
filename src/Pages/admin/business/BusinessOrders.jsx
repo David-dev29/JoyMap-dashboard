@@ -27,6 +27,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { useBusiness } from '../../../context/BusinessContext';
 import { getBusinessOrders, updateOrderStatus } from '../../../services/api';
 import NoBusinessSelected from '../../../Components/Dashboard/NoBusinessSelected';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 // Status configuration
 const statusConfig = {
@@ -141,6 +142,7 @@ const PendingTimer = ({ createdAt }) => {
 };
 
 const BusinessOrders = () => {
+  const isMobile = useIsMobile(768);
   const { user } = useAuth();
   const { selectedBusiness, loading: businessLoading } = useBusiness();
   const isAdmin = user?.role === 'admin';
@@ -150,7 +152,8 @@ const BusinessOrders = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [updating, setUpdating] = useState(null);
-  const [expandedOrderId, setExpandedOrderId] = useState(null); // Track which order is expanded
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [mobileStatusFilter, setMobileStatusFilter] = useState('pending');
 
   const previousOrderIdsRef = useRef(new Set());
   const isFirstLoadRef = useRef(true);
@@ -520,6 +523,128 @@ const BusinessOrders = () => {
     );
   }
 
+  // Mobile status tabs with counts
+  const mobileStatusTabs = kanbanColumns.map(col => ({
+    key: col.id,
+    label: col.title,
+    count: getColumnOrders(col).length,
+    color: col.color,
+    Icon: col.icon,
+    bgClass: col.bgClass,
+    textClass: col.textClass,
+  }));
+
+  // Get orders for mobile view
+  const getMobileFilteredOrders = () => {
+    const column = kanbanColumns.find(c => c.id === mobileStatusFilter);
+    if (!column) return [];
+    return filteredOrders.filter(order => column.statuses.includes(order.status));
+  };
+
+  // ========== MOBILE LAYOUT ==========
+  if (isMobile) {
+    const mobileOrders = getMobileFilteredOrders();
+
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow-sm">
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-lg font-bold text-gray-900 dark:text-white">Pedidos</h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {orders.length} totales
+                </p>
+              </div>
+              <button
+                onClick={() => loadOrders(true)}
+                className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center"
+              >
+                <RefreshCw size={18} className="text-gray-600 dark:text-gray-300" />
+              </button>
+            </div>
+          </div>
+
+          {/* Search bar */}
+          <div className="px-4 pb-3">
+            <div className="relative">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar por # orden o cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-gray-700 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          {/* Status Tabs */}
+          <div className="px-4 pb-3 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-2 min-w-max">
+              {mobileStatusTabs.map((tab) => {
+                const Icon = tab.Icon;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setMobileStatusFilter(tab.key)}
+                    className={`px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                      mobileStatusFilter === tab.key
+                        ? `${tab.bgClass} ${tab.textClass}`
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                    }`}
+                  >
+                    <Icon size={14} />
+                    {tab.label}
+                    <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs ${
+                      mobileStatusFilter === tab.key
+                        ? 'bg-white/30'
+                        : 'bg-gray-200 dark:bg-gray-600'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mx-4 mt-4 flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+            <AlertCircle className="text-red-500 flex-shrink-0" size={18} />
+            <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* Orders List */}
+        <div className="px-4 py-4 space-y-3 pb-24">
+          {mobileOrders.length === 0 ? (
+            <div className="text-center py-12">
+              <div className={`w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center ${
+                mobileStatusTabs.find(t => t.key === mobileStatusFilter)?.bgClass
+              }`}>
+                {(() => {
+                  const tab = mobileStatusTabs.find(t => t.key === mobileStatusFilter);
+                  const Icon = tab?.Icon || Clock;
+                  return <Icon size={28} className={tab?.textClass} />;
+                })()}
+              </div>
+              <p className="text-gray-500 dark:text-gray-400">Sin órdenes</p>
+            </div>
+          ) : (
+            mobileOrders.map((order) => (
+              <OrderCard key={order._id} order={order} />
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ========== DESKTOP LAYOUT ==========
   return (
     <div className="space-y-6 h-full">
       {/* Header */}

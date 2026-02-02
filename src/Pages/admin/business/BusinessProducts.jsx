@@ -11,8 +11,11 @@ import {
   Filter,
   ToggleLeft,
   ToggleRight,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Card, Button, Input, Select, Badge, Table, Modal, Toggle } from '../../../components/ui';
+import MobileModal from '../../../components/ui/MobileModal';
 import { useAuth } from '../../../context/AuthContext';
 import { useBusiness } from '../../../context/BusinessContext';
 import {
@@ -23,6 +26,7 @@ import {
 } from '../../../services/api';
 import { authFetch, ENDPOINTS } from '../../../config/api';
 import NoBusinessSelected from '../../../Components/Dashboard/NoBusinessSelected';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 const availabilityOptions = [
   { value: 'all', label: 'Todos' },
@@ -38,6 +42,7 @@ const availabilityConfig = {
 };
 
 const BusinessProducts = () => {
+  const isMobile = useIsMobile(768);
   const { user } = useAuth();
   const { selectedBusiness, loading: businessLoading } = useBusiness();
   const isAdmin = user?.role === 'admin';
@@ -48,6 +53,7 @@ const BusinessProducts = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [availabilityFilter, setAvailabilityFilter] = useState('all');
+  const [expandedProductId, setExpandedProductId] = useState(null);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -320,6 +326,299 @@ const BusinessProducts = () => {
     }
   };
 
+  // Mobile product card
+  const MobileProductCard = ({ product }) => {
+    const isExpanded = expandedProductId === product._id;
+    const availConfig = availabilityConfig[product.availability] || {};
+
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-card overflow-hidden">
+        <div
+          className="p-4"
+          onClick={() => setExpandedProductId(isExpanded ? null : product._id)}
+        >
+          <div className="flex gap-3">
+            {/* Image */}
+            {product.image ? (
+              <img
+                src={product.image.startsWith('http') ? product.image : `https://${product.image}`}
+                alt={product.name}
+                className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                <Package size={24} className="text-gray-400" />
+              </div>
+            )}
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between">
+                <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
+                  {product.name}
+                </h4>
+                {isExpanded ? (
+                  <ChevronUp size={18} className="text-gray-400 flex-shrink-0" />
+                ) : (
+                  <ChevronDown size={18} className="text-gray-400 flex-shrink-0" />
+                )}
+              </div>
+              <p className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+                ${product.price?.toLocaleString()}
+              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant="secondary" size="sm">{product.category}</Badge>
+                <Badge variant={availConfig.color || 'secondary'} size="sm">
+                  {availConfig.label || product.availability}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Expanded actions */}
+        {isExpanded && (
+          <div className="px-4 pb-4 pt-2 border-t border-gray-100 dark:border-gray-700 flex gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleAvailability(product);
+              }}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 ${
+                product.availability === 'Disponible'
+                  ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                  : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+              }`}
+            >
+              {product.availability === 'Disponible' ? <ToggleLeft size={16} /> : <ToggleRight size={16} />}
+              {product.availability === 'Disponible' ? 'Deshabilitar' : 'Habilitar'}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openEditModal(product);
+              }}
+              className="flex-1 py-2.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+            >
+              <Edit2 size={16} />
+              Editar
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                confirmDelete(product);
+              }}
+              className="py-2.5 px-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-xl text-sm font-medium"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ========== MOBILE LAYOUT ==========
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow-sm">
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-lg font-bold text-gray-900 dark:text-white">Productos</h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {filteredProducts.length} de {products.length}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Search bar */}
+          <div className="px-4 pb-3">
+            <div className="relative">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar productos..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-gray-700 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          {/* Category Tabs */}
+          <div className="px-4 pb-3 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-2 min-w-max">
+              <button
+                onClick={() => setCategoryFilter('all')}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                  categoryFilter === 'all'
+                    ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                }`}
+              >
+                Todos ({products.length})
+              </button>
+              {categories.map((cat) => {
+                const count = products.filter(p => p.categoryId === cat._id).length;
+                return (
+                  <button
+                    key={cat._id}
+                    onClick={() => setCategoryFilter(cat._id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                      categoryFilter === cat._id
+                        ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                    }`}
+                  >
+                    {cat.name} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Products List */}
+        <div className="px-4 py-4 space-y-3 pb-24">
+          {filteredProducts.length === 0 ? (
+            <div className="text-center py-12">
+              <Package size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+              <p className="text-gray-500 dark:text-gray-400">No hay productos</p>
+            </div>
+          ) : (
+            filteredProducts.map((product) => (
+              <MobileProductCard key={product._id} product={product} />
+            ))
+          )}
+        </div>
+
+        {/* FAB */}
+        <button
+          onClick={openCreateModal}
+          className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center z-50"
+        >
+          <Plus size={24} />
+        </button>
+
+        {/* Mobile Modal for Create/Edit */}
+        <MobileModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          title={editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
+        >
+          <div className="space-y-4">
+            {error && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-xl text-sm">
+                {error}
+              </div>
+            )}
+
+            {/* Image */}
+            <div
+              onClick={() => imageInputRef.current?.click()}
+              className="w-full h-32 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden"
+            >
+              {imagePreview ? (
+                <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                  <Upload size={24} />
+                  <span className="text-sm mt-1">Subir imagen</span>
+                </div>
+              )}
+            </div>
+            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+
+            <Input
+              label="Nombre"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            />
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Descripción</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                rows={2}
+                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl text-sm"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Precio"
+                type="number"
+                value={formData.price}
+                onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+              />
+              <Select
+                label="Categoría"
+                options={categories.map(cat => ({ value: cat._id, label: cat.name }))}
+                value={formData.categoryId}
+                onChange={(e) => setFormData(prev => ({ ...prev, categoryId: e.target.value }))}
+              />
+            </div>
+
+            <Select
+              label="Disponibilidad"
+              options={[
+                { value: 'Disponible', label: 'Disponible' },
+                { value: 'No disponible', label: 'No disponible' },
+                { value: 'Agotado', label: 'Agotado' },
+              ]}
+              value={formData.availability}
+              onChange={(e) => setFormData(prev => ({ ...prev, availability: e.target.value }))}
+            />
+
+            <button
+              onClick={handleSubmit}
+              disabled={saving}
+              className="w-full py-3 bg-indigo-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {saving ? 'Guardando...' : editingProduct ? 'Guardar Cambios' : 'Crear Producto'}
+            </button>
+          </div>
+        </MobileModal>
+
+        {/* Mobile Delete Modal */}
+        <MobileModal
+          isOpen={deleteModalOpen}
+          onClose={() => setDeleteModalOpen(false)}
+          title="Eliminar Producto"
+        >
+          <div className="text-center py-4">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={28} className="text-red-600 dark:text-red-400" />
+            </div>
+            <p className="text-gray-600 dark:text-gray-300">
+              ¿Eliminar <strong>{productToDelete?.name}</strong>?
+            </p>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setDeleteModalOpen(false)}
+                className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 py-3 bg-red-600 text-white rounded-xl font-semibold"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </MobileModal>
+      </div>
+    );
+  }
+
+  // ========== DESKTOP LAYOUT ==========
   return (
     <div className="space-y-6 overflow-hidden max-w-full">
       {/* Header */}

@@ -10,6 +10,10 @@ import {
   TrendingDown,
   XCircle,
   Filter,
+  Users,
+  ChevronRight,
+  ArrowUpRight,
+  ArrowDownRight,
 } from 'lucide-react';
 import {
   BarChart,
@@ -25,6 +29,7 @@ import {
 } from 'recharts';
 import { Card, Button, Select, Badge, Table } from '../../components/ui';
 import { StatsCard } from '../../components/shared';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 // Mock data
 const generateMockData = (days) => {
@@ -67,10 +72,12 @@ const dateRangeOptions = [
 ];
 
 const Reports = () => {
+  const isMobile = useIsMobile(768);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('week');
   const [selectedBusiness, setSelectedBusiness] = useState('');
   const [chartData, setChartData] = useState([]);
+  const [activeTab, setActiveTab] = useState('ventas');
   const [businesses, setBusinesses] = useState([
     { value: '', label: 'Todos los negocios' },
     { value: '1', label: 'El Buen Sabor' },
@@ -166,6 +173,278 @@ const Reports = () => {
     },
   ];
 
+  // Mobile tabs
+  const reportTabs = [
+    { key: 'ventas', label: 'Ventas', icon: DollarSign },
+    { key: 'pedidos', label: 'Pedidos', icon: ShoppingCart },
+    { key: 'negocios', label: 'Negocios', icon: Building2 },
+    { key: 'usuarios', label: 'Usuarios', icon: Users },
+  ];
+
+  // Mobile date filters
+  const mobileDateFilters = [
+    { key: 'today', label: 'Hoy' },
+    { key: 'week', label: 'Semana' },
+    { key: 'month', label: 'Mes' },
+    { key: 'quarter', label: 'Trimestre' },
+  ];
+
+  // Mobile business card component
+  const MobileBusinessCard = ({ business, index }) => {
+    const avgTicket = (business.revenue / business.orders).toFixed(2);
+    const cancelRate = ((business.cancelled / business.orders) * 100).toFixed(1);
+
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+              <span className="font-bold text-indigo-600 dark:text-indigo-400">#{index + 1}</span>
+            </div>
+            <h4 className="font-semibold text-gray-900 dark:text-white">{business.name}</h4>
+          </div>
+          <ChevronRight size={18} className="text-gray-400" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+            <p className="text-xs text-gray-500 mb-1">Ingresos</p>
+            <p className="font-bold text-emerald-600 dark:text-emerald-400">${business.revenue.toLocaleString()}</p>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+            <p className="text-xs text-gray-500 mb-1">Órdenes</p>
+            <p className="font-bold text-gray-900 dark:text-white">{business.orders}</p>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+            <p className="text-xs text-gray-500 mb-1">Ticket Prom.</p>
+            <p className="font-bold text-gray-900 dark:text-white">${avgTicket}</p>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+            <p className="text-xs text-gray-500 mb-1">Canceladas</p>
+            <div className="flex items-center gap-1">
+              <p className="font-bold text-red-600 dark:text-red-400">{business.cancelled}</p>
+              <span className={`text-xs px-1.5 py-0.5 rounded ${
+                parseFloat(cancelRate) > 5
+                  ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
+                  : parseFloat(cancelRate) > 3
+                  ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600'
+                  : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'
+              }`}>
+                {cancelRate}%
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ========== MOBILE LAYOUT ==========
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow-sm">
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-lg font-bold text-gray-900 dark:text-white">Reportes</h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Análisis de la plataforma
+                </p>
+              </div>
+              <button
+                onClick={handleExportCSV}
+                className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center"
+              >
+                <Download size={18} className="text-indigo-600 dark:text-indigo-400" />
+              </button>
+            </div>
+          </div>
+
+          {/* Report Type Tabs */}
+          <div className="px-4 pb-3 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-2 min-w-max">
+              {reportTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2 ${
+                      activeTab === tab.key
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                    }`}
+                  >
+                    <Icon size={16} />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Date Filter Tabs */}
+          <div className="px-4 pb-3 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-2 min-w-max">
+              {mobileDateFilters.map((filter) => (
+                <button
+                  key={filter.key}
+                  onClick={() => setDateRange(filter.key)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                    dateRange === filter.key
+                      ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="px-4 pt-4 grid grid-cols-2 gap-3">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-card">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+                <ShoppingCart size={18} className="text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div className="flex items-center gap-1 text-xs text-emerald-600">
+                <ArrowUpRight size={12} />
+                +12%
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalOrders}</p>
+            <p className="text-xs text-gray-500">Órdenes totales</p>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-card">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
+                <DollarSign size={18} className="text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="flex items-center gap-1 text-xs text-emerald-600">
+                <ArrowUpRight size={12} />
+                +8%
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">${stats.totalRevenue.toLocaleString()}</p>
+            <p className="text-xs text-gray-500">Ingresos totales</p>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-card">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
+                <TrendingUp size={18} className="text-purple-600 dark:text-purple-400" />
+              </div>
+              <div className="flex items-center gap-1 text-xs text-emerald-600">
+                <ArrowUpRight size={12} />
+                +3%
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">${stats.avgTicket.toFixed(2)}</p>
+            <p className="text-xs text-gray-500">Ticket promedio</p>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-card">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center">
+                <XCircle size={18} className="text-red-600 dark:text-red-400" />
+              </div>
+              <div className="flex items-center gap-1 text-xs text-emerald-600">
+                <ArrowDownRight size={12} />
+                -5%
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.cancelledOrders}</p>
+            <p className="text-xs text-gray-500">Canceladas</p>
+          </div>
+        </div>
+
+        {/* Mobile Chart (simplified) */}
+        <div className="px-4 pt-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-card p-4">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Tendencia de ventas</h3>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#6B7280', fontSize: 10 }}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis hide />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    name="Ingresos"
+                    stroke="#4F46E5"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Business List */}
+        <div className="px-4 pt-4 pb-24">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-gray-900 dark:text-white">Top Negocios</h3>
+            <span className="text-xs text-gray-500">{businessSalesData.length} negocios</span>
+          </div>
+          <div className="space-y-3">
+            {businessSalesData.map((business, index) => (
+              <MobileBusinessCard key={index} business={business} index={index} />
+            ))}
+          </div>
+
+          {/* Mobile Totals */}
+          <div className="mt-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl p-4 border border-indigo-200 dark:border-indigo-800">
+            <h3 className="font-semibold text-indigo-700 dark:text-indigo-300 mb-3">Totales Globales</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-indigo-600 dark:text-indigo-400">Órdenes</p>
+                <p className="text-lg font-bold text-indigo-700 dark:text-indigo-300">
+                  {businessSalesData.reduce((sum, b) => sum + b.orders, 0).toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-indigo-600 dark:text-indigo-400">Ingresos</p>
+                <p className="text-lg font-bold text-indigo-700 dark:text-indigo-300">
+                  ${businessSalesData.reduce((sum, b) => sum + b.revenue, 0).toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-indigo-600 dark:text-indigo-400">Ticket Promedio</p>
+                <p className="text-lg font-bold text-indigo-700 dark:text-indigo-300">
+                  ${(businessSalesData.reduce((sum, b) => sum + b.revenue, 0) /
+                     businessSalesData.reduce((sum, b) => sum + b.orders, 0)).toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-indigo-600 dark:text-indigo-400">Canceladas</p>
+                <p className="text-lg font-bold text-indigo-700 dark:text-indigo-300">
+                  {businessSalesData.reduce((sum, b) => sum + b.cancelled, 0)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ========== DESKTOP LAYOUT ==========
   return (
     <div className="space-y-6">
       {/* Header */}

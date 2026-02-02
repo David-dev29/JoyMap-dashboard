@@ -6,12 +6,29 @@ import {
   DollarSign,
   TrendingUp,
   ArrowUpRight,
+  ArrowDownRight,
   MoreHorizontal,
   Clock,
   CheckCircle,
   XCircle,
   AlertCircle,
+  RefreshCw,
+  ChevronRight,
+  Star,
 } from 'lucide-react';
+import {
+  HiOutlineOfficeBuilding,
+  HiOutlineUsers,
+  HiOutlineShoppingCart,
+  HiOutlineCurrencyDollar,
+  HiOutlineRefresh,
+  HiOutlineTrendingUp,
+  HiOutlineTrendingDown,
+  HiOutlineChevronRight,
+  HiOutlineClock,
+  HiOutlineCheckCircle,
+  HiOutlineExclamationCircle,
+} from 'react-icons/hi';
 import {
   AreaChart,
   Area,
@@ -23,9 +40,26 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 import { Card, Badge } from '../../components/ui';
 import { StatsCard } from '../../components/shared';
 import { authFetch, ENDPOINTS } from '../../config/api';
+
+// Custom hook for detecting mobile
+const useIsMobile = (breakpoint = 768) => {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < breakpoint);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [breakpoint]);
+
+  return isMobile;
+};
 
 // Mock data for charts (TODO: Create stats endpoint in API)
 const ordersChartData = [
@@ -38,14 +72,6 @@ const ordersChartData = [
   { day: 'Dom', orders: 68, revenue: 3560 },
 ];
 
-const recentActivity = [
-  { type: 'new_business', message: 'Nuevo negocio registrado: Pizzeria Roma', time: '10 min' },
-  { type: 'new_user', message: 'Nuevo usuario: Carlos Rodriguez (business_owner)', time: '25 min' },
-  { type: 'order', message: 'Orden #1001 completada en El Buen Sabor', time: '30 min' },
-  { type: 'review', message: 'Nueva reseña 5★ para Pizza Express', time: '45 min' },
-  { type: 'alert', message: '3 productos agotados en Sushi Master', time: '1 hora' },
-];
-
 const statusConfig = {
   pending: { label: 'Pendiente', color: 'warning', icon: Clock },
   confirmed: { label: 'Confirmado', color: 'info', icon: Clock },
@@ -56,7 +82,100 @@ const statusConfig = {
   cancelled: { label: 'Cancelado', color: 'danger', icon: XCircle },
 };
 
+// Mobile Quick Action Card
+const QuickActionCard = ({ icon: Icon, label, value, onClick, color = 'primary' }) => {
+  const colors = {
+    primary: 'bg-primary-100 dark:bg-primary-900/30 text-primary-600',
+    emerald: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600',
+    purple: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600',
+    amber: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600',
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-gray-900 rounded-2xl shadow-card active:scale-95 transition-transform"
+    >
+      <div className={`w-12 h-12 ${colors[color]} rounded-xl flex items-center justify-center`}>
+        <Icon className="w-6 h-6" />
+      </div>
+      <span className="text-sm font-medium text-gray-900 dark:text-white">{label}</span>
+      {value !== undefined && (
+        <span className="text-xs text-gray-500">{value}</span>
+      )}
+    </button>
+  );
+};
+
+// Mobile Order Card
+const MobileOrderCard = ({ order, statusConfig }) => {
+  const status = statusConfig[order.status] || statusConfig.pending;
+  const StatusIcon = status.icon;
+
+  return (
+    <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-900 rounded-2xl shadow-card">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+          <HiOutlineShoppingCart className="w-5 h-5 text-indigo-600" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-900 dark:text-white">
+            #{order.id}
+          </p>
+          <p className="text-xs text-gray-500">{order.business}</p>
+        </div>
+      </div>
+      <div className="text-right">
+        <p className="text-sm font-semibold text-gray-900 dark:text-white">
+          ${order.total?.toLocaleString() || 0}
+        </p>
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+          status.color === 'success' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+          status.color === 'warning' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+          status.color === 'danger' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+          'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+        }`}>
+          {status.label}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+// Mobile Business Card
+const MobileBusinessCard = ({ business, rank }) => {
+  const rankColors = {
+    1: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30',
+    2: 'bg-gray-200 text-gray-600 dark:bg-gray-600',
+    3: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30',
+  };
+
+  return (
+    <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-900 rounded-2xl shadow-card">
+      <div className={`w-8 h-8 ${rankColors[rank] || 'bg-gray-100 text-gray-500 dark:bg-gray-700'} rounded-lg flex items-center justify-center text-sm font-bold`}>
+        {rank}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+          {business.name}
+        </p>
+        <p className="text-xs text-gray-500">{business.orders} ordenes</p>
+      </div>
+      <div className="text-right">
+        <p className="text-sm font-semibold text-emerald-600">
+          ${business.revenue?.toLocaleString()}
+        </p>
+        {business.growth > 0 && (
+          <p className="text-xs text-emerald-500">+{business.growth}%</p>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const AdminDashboard = () => {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalBusinesses: 0,
@@ -84,11 +203,6 @@ const AdminDashboard = () => {
       const businessesData = await businessesRes.json();
       const usersData = await usersRes.json();
       const ordersData = await ordersRes.json();
-
-      console.log('=== DEBUG Dashboard ===');
-      console.log('Businesses:', businessesData);
-      console.log('Users:', usersData);
-      console.log('Orders:', ordersData);
 
       // Extract data with flexible structure
       const businesses = businessesData.businesses || businessesData.response || businessesData.data || (Array.isArray(businessesData) ? businessesData : []);
@@ -123,7 +237,6 @@ const AdminDashboard = () => {
 
       // Calculate top businesses by orders
       const businessOrderCount = {};
-      const businessRevenue = {};
       orders.forEach(order => {
         const bizId = order.business?._id || order.businessId;
         const bizName = order.business?.name || 'Desconocido';
@@ -147,13 +260,10 @@ const AdminDashboard = () => {
           growth: Math.floor(Math.random() * 20) + 1, // TODO: Calculate real growth
         }));
 
-      setTopBusinesses(topBiz.length > 0 ? topBiz : [
-        { id: 1, name: 'Sin datos suficientes', orders: 0, revenue: 0, growth: 0 },
-      ]);
+      setTopBusinesses(topBiz.length > 0 ? topBiz : []);
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      // Set default values on error
       setStats({
         totalBusinesses: 0,
         totalUsers: 0,
@@ -182,6 +292,223 @@ const AdminDashboard = () => {
     return `${diffDays}d`;
   };
 
+  const maxRevenue = Math.max(...ordersChartData.map(d => d.revenue), 1);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-gray-500 dark:text-gray-400">Cargando dashboard...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Mobile Layout
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
+        {/* Header */}
+        <div className="px-4 py-4 bg-gradient-to-r from-indigo-600 to-purple-600">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-indigo-200 text-sm">Bienvenido de vuelta</p>
+              <h1 className="text-xl font-bold text-white">Panel Admin</h1>
+            </div>
+            <button
+              onClick={fetchDashboardData}
+              className="p-2.5 bg-white/20 rounded-xl hover:bg-white/30 transition-colors"
+            >
+              <HiOutlineRefresh className="w-5 h-5 text-white" />
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Cards - 2x2 Grid */}
+        <div className="px-4 -mt-4">
+          <div className="grid grid-cols-2 gap-3">
+            {/* Negocios */}
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+                  <HiOutlineOfficeBuilding className="w-4 h-4 text-indigo-600" />
+                </div>
+                <span className="text-xs text-gray-500">Negocios</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {stats.totalBusinesses}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">activos</p>
+            </div>
+
+            {/* Usuarios */}
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                  <HiOutlineUsers className="w-4 h-4 text-emerald-600" />
+                </div>
+                <span className="text-xs text-gray-500">Usuarios</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {stats.totalUsers}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">registrados</p>
+            </div>
+
+            {/* Ordenes Hoy */}
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                  <HiOutlineShoppingCart className="w-4 h-4 text-purple-600" />
+                </div>
+                <span className="text-xs text-gray-500">Ordenes Hoy</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {stats.ordersToday}
+              </p>
+              <p className="text-xs text-emerald-500 mt-1 flex items-center gap-1">
+                <HiOutlineTrendingUp className="w-3 h-3" />
+                vs ayer
+              </p>
+            </div>
+
+            {/* Ingresos Hoy */}
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center">
+                  <HiOutlineCurrencyDollar className="w-4 h-4 text-amber-600" />
+                </div>
+                <span className="text-xs text-gray-500">Ingresos Hoy</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                ${stats.revenueToday.toLocaleString()}
+              </p>
+              <p className="text-xs text-emerald-500 mt-1 flex items-center gap-1">
+                <HiOutlineTrendingUp className="w-3 h-3" />
+                vs ayer
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="px-4 mt-6">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+            Acceso Rapido
+          </h2>
+          <div className="grid grid-cols-4 gap-3">
+            <QuickActionCard
+              icon={HiOutlineOfficeBuilding}
+              label="Negocios"
+              onClick={() => navigate('/admin/businesses')}
+              color="primary"
+            />
+            <QuickActionCard
+              icon={HiOutlineUsers}
+              label="Usuarios"
+              onClick={() => navigate('/admin/users')}
+              color="emerald"
+            />
+            <QuickActionCard
+              icon={HiOutlineShoppingCart}
+              label="Ordenes"
+              onClick={() => navigate('/admin/sales/history')}
+              color="purple"
+            />
+            <QuickActionCard
+              icon={HiOutlineCurrencyDollar}
+              label="Reportes"
+              onClick={() => navigate('/admin/reports')}
+              color="amber"
+            />
+          </div>
+        </div>
+
+        {/* Mini Chart */}
+        <div className="px-4 mt-6">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-medium text-gray-900 dark:text-white text-sm">
+                Ventas - Ultimos 7 dias
+              </h3>
+              <span className="text-xs text-gray-500">
+                ${ordersChartData.reduce((acc, d) => acc + d.revenue, 0).toLocaleString()}
+              </span>
+            </div>
+            <div className="flex items-end justify-between gap-1 h-24">
+              {ordersChartData.map((day, index) => (
+                <div key={index} className="flex-1 flex flex-col items-center gap-1">
+                  <div className="w-full flex flex-col items-center justify-end h-20">
+                    <div
+                      className="w-full max-w-[24px] bg-gradient-to-t from-indigo-600 to-indigo-400 rounded-t transition-all"
+                      style={{ height: `${(day.revenue / maxRevenue) * 100}%`, minHeight: day.revenue > 0 ? '4px' : '0' }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-gray-500 capitalize">{day.day}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Top Businesses */}
+        {topBusinesses.length > 0 && (
+          <div className="px-4 mt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <Star className="w-4 h-4 text-amber-500" />
+                Top Negocios
+              </h2>
+              <button
+                onClick={() => navigate('/admin/businesses')}
+                className="text-xs text-indigo-600 font-medium flex items-center gap-1"
+              >
+                Ver todos
+                <HiOutlineChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {topBusinesses.slice(0, 3).map((business, idx) => (
+                <MobileBusinessCard key={idx} business={business} rank={idx + 1} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Orders */}
+        <div className="px-4 mt-6 pb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+              Ordenes Recientes
+            </h2>
+            <button
+              onClick={() => navigate('/admin/sales/history')}
+              className="text-xs text-indigo-600 font-medium flex items-center gap-1"
+            >
+              Ver todas
+              <HiOutlineChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+          {recentOrders.length === 0 ? (
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card p-8 text-center">
+              <HiOutlineShoppingCart className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-500">No hay ordenes recientes</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recentOrders.slice(0, 5).map((order, idx) => (
+                <MobileOrderCard key={idx} order={order} statusConfig={statusConfig} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop Layout (Original)
   const statsCards = [
     {
       title: 'Negocios Activos',
@@ -245,7 +572,10 @@ const AdminDashboard = () => {
             Bienvenido de vuelta. Aqui esta el resumen de la plataforma.
           </p>
         </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm shadow-indigo-500/25">
+        <button
+          onClick={() => navigate('/admin/reports')}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm shadow-indigo-500/25"
+        >
           <ArrowUpRight size={18} />
           Ver reportes completos
         </button>
@@ -356,19 +686,7 @@ const AdminDashboard = () => {
           </Card.Header>
           <Card.Content>
             <div className="space-y-4">
-              {loading ? (
-                [...Array(5)].map((_, i) => (
-                  <div key={i} className="animate-pulse flex items-center justify-between p-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 bg-gray-200 dark:bg-slate-700 rounded-lg" />
-                      <div className="space-y-2">
-                        <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-24" />
-                        <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-16" />
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : topBusinesses.length === 0 ? (
+              {topBusinesses.length === 0 ? (
                 <p className="text-center text-gray-500 py-4">No hay datos disponibles</p>
               ) : (
                 topBusinesses.map((business, i) => (
@@ -421,19 +739,7 @@ const AdminDashboard = () => {
           </Card.Header>
           <Card.Content>
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-              {loading ? (
-                [...Array(5)].map((_, i) => (
-                  <div key={i} className="animate-pulse flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-200 dark:bg-slate-600 rounded-xl" />
-                      <div className="space-y-2">
-                        <div className="h-4 bg-gray-200 dark:bg-slate-600 rounded w-32" />
-                        <div className="h-3 bg-gray-200 dark:bg-slate-600 rounded w-24" />
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : recentOrders.length === 0 ? (
+              {recentOrders.length === 0 ? (
                 <p className="text-center text-gray-500 py-8">No hay ordenes recientes</p>
               ) : (
                 recentOrders.map((order) => {
@@ -476,46 +782,6 @@ const AdminDashboard = () => {
           </Card.Content>
         </Card>
       </div>
-
-      {/* Activity Feed */}
-      <Card>
-        <Card.Header>
-          <Card.Title>Actividad Reciente</Card.Title>
-          <Card.Description>Ultimos movimientos en la plataforma (datos de ejemplo)</Card.Description>
-        </Card.Header>
-        <Card.Content>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {recentActivity.map((activity, index) => (
-              <div
-                key={index}
-                className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl"
-              >
-                <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
-                    ${activity.type === 'new_business' ? 'bg-blue-100 dark:bg-blue-900/30' : ''}
-                    ${activity.type === 'new_user' ? 'bg-green-100 dark:bg-green-900/30' : ''}
-                    ${activity.type === 'order' ? 'bg-purple-100 dark:bg-purple-900/30' : ''}
-                    ${activity.type === 'review' ? 'bg-amber-100 dark:bg-amber-900/30' : ''}
-                    ${activity.type === 'alert' ? 'bg-red-100 dark:bg-red-900/30' : ''}
-                  `}
-                >
-                  {activity.type === 'new_business' && <Building2 size={16} className="text-blue-600 dark:text-blue-400" />}
-                  {activity.type === 'new_user' && <Users size={16} className="text-green-600 dark:text-green-400" />}
-                  {activity.type === 'order' && <ShoppingCart size={16} className="text-purple-600 dark:text-purple-400" />}
-                  {activity.type === 'review' && <TrendingUp size={16} className="text-amber-600 dark:text-amber-400" />}
-                  {activity.type === 'alert' && <AlertCircle size={16} className="text-red-600 dark:text-red-400" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 dark:text-white line-clamp-2">
-                    {activity.message}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">Hace {activity.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card.Content>
-      </Card>
     </div>
   );
 };

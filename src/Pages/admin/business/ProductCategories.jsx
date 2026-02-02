@@ -9,8 +9,11 @@ import {
   Package,
   GripVertical,
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Card, Button, Input, Badge, Table, Modal } from '../../../components/ui';
+import MobileModal from '../../../components/ui/MobileModal';
 import { useAuth } from '../../../context/AuthContext';
 import { useBusiness } from '../../../context/BusinessContext';
 import {
@@ -21,14 +24,17 @@ import {
 } from '../../../services/api';
 import { authFetch, ENDPOINTS } from '../../../config/api';
 import NoBusinessSelected from '../../../Components/Dashboard/NoBusinessSelected';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 const ProductCategories = () => {
+  const isMobile = useIsMobile(768);
   const { user } = useAuth();
   const { selectedBusiness, loading: businessLoading } = useBusiness();
   const isAdmin = user?.role === 'admin';
 
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
+  const [expandedCategoryId, setExpandedCategoryId] = useState(null);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -256,6 +262,252 @@ const ProductCategories = () => {
     return category.products?.length || 0;
   };
 
+  // Mobile category card
+  const MobileCategoryCard = ({ category, index }) => {
+    const isExpanded = expandedCategoryId === category._id;
+    const productCount = getProductCount(category);
+
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-card overflow-hidden">
+        <div
+          className="p-4"
+          onClick={() => setExpandedCategoryId(isExpanded ? null : category._id)}
+        >
+          <div className="flex items-center gap-3">
+            {/* Icon */}
+            {category.iconUrl ? (
+              <img
+                src={category.iconUrl.startsWith('http') ? category.iconUrl : `https://${category.iconUrl}`}
+                alt={category.name}
+                className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
+                <Boxes size={20} className="text-indigo-600 dark:text-indigo-400" />
+              </div>
+            )}
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400 font-medium">#{index + 1}</span>
+                <h4 className="font-semibold text-gray-900 dark:text-white truncate">
+                  {category.name}
+                </h4>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant={productCount > 0 ? 'primary' : 'secondary'} size="sm">
+                  <Package size={12} className="mr-1" />
+                  {productCount} productos
+                </Badge>
+              </div>
+            </div>
+
+            {isExpanded ? (
+              <ChevronUp size={18} className="text-gray-400 flex-shrink-0" />
+            ) : (
+              <ChevronDown size={18} className="text-gray-400 flex-shrink-0" />
+            )}
+          </div>
+
+          {category.description && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 line-clamp-1">
+              {category.description}
+            </p>
+          )}
+        </div>
+
+        {/* Expanded actions */}
+        {isExpanded && (
+          <div className="px-4 pb-4 pt-2 border-t border-gray-100 dark:border-gray-700 flex gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openEditModal(category);
+              }}
+              className="flex-1 py-2.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+            >
+              <Edit2 size={16} />
+              Editar
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                confirmDelete(category);
+              }}
+              className="flex-1 py-2.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+            >
+              <Trash2 size={16} />
+              Eliminar
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ========== MOBILE LAYOUT ==========
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow-sm">
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-lg font-bold text-gray-900 dark:text-white">Categorías</h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {categories.length} categorías
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Card */}
+        <div className="px-4 pt-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Total de productos</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {categories.reduce((sum, c) => sum + getProductCount(c), 0)}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+                <Package size={24} className="text-indigo-600 dark:text-indigo-400" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Categories List */}
+        <div className="px-4 py-4 space-y-3 pb-24">
+          {categories.length === 0 ? (
+            <div className="text-center py-12">
+              <Boxes size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+              <p className="text-gray-500 dark:text-gray-400">No hay categorías</p>
+            </div>
+          ) : (
+            categories.map((category, index) => (
+              <MobileCategoryCard key={category._id} category={category} index={index} />
+            ))
+          )}
+        </div>
+
+        {/* FAB */}
+        <button
+          onClick={openCreateModal}
+          className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center z-50"
+        >
+          <Plus size={24} />
+        </button>
+
+        {/* Mobile Modal for Create/Edit */}
+        <MobileModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          title={editingCategory ? 'Editar Categoría' : 'Nueva Categoría'}
+        >
+          <div className="space-y-4">
+            {error && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-xl text-sm">
+                {error}
+              </div>
+            )}
+
+            {/* Icon */}
+            <div
+              onClick={() => imageInputRef.current?.click()}
+              className="w-20 h-20 mx-auto rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden"
+            >
+              {iconPreview ? (
+                <img src={iconPreview} alt="Preview" className="w-full h-full object-cover" />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                  <Upload size={20} />
+                  <span className="text-xs mt-1">Ícono</span>
+                </div>
+              )}
+            </div>
+            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+
+            <Input
+              label="Nombre"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              placeholder="Ej: Tacos"
+            />
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Descripción</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                rows={2}
+                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl text-sm"
+              />
+            </div>
+
+            <Input
+              label="Orden"
+              type="number"
+              value={formData.order}
+              onChange={(e) => setFormData(prev => ({ ...prev, order: parseInt(e.target.value) || 0 }))}
+            />
+
+            <button
+              onClick={handleSubmit}
+              disabled={saving}
+              className="w-full py-3 bg-indigo-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {saving ? 'Guardando...' : editingCategory ? 'Guardar Cambios' : 'Crear Categoría'}
+            </button>
+          </div>
+        </MobileModal>
+
+        {/* Mobile Delete Modal */}
+        <MobileModal
+          isOpen={deleteModalOpen}
+          onClose={() => setDeleteModalOpen(false)}
+          title="Eliminar Categoría"
+        >
+          <div className="text-center py-4">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={28} className="text-red-600 dark:text-red-400" />
+            </div>
+
+            {getProductCount(categoryToDelete) > 0 && (
+              <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-xl text-sm text-left">
+                <AlertTriangle size={16} className="inline mr-2" />
+                Esta categoría tiene {getProductCount(categoryToDelete)} productos
+              </div>
+            )}
+
+            <p className="text-gray-600 dark:text-gray-300">
+              ¿Eliminar <strong>{categoryToDelete?.name}</strong>?
+            </p>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setDeleteModalOpen(false)}
+                className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 py-3 bg-red-600 text-white rounded-xl font-semibold"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </MobileModal>
+      </div>
+    );
+  }
+
+  // ========== DESKTOP LAYOUT ==========
   return (
     <div className="space-y-6 overflow-hidden max-w-full">
       {/* Header */}

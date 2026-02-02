@@ -15,14 +15,19 @@ import {
   DollarSign,
   Users,
   Copy,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, Button, Input, Badge, Table, Modal, Dropdown } from '../../../components/ui';
+import MobileModal from '../../../components/ui/MobileModal';
 import { authFetch, ENDPOINTS } from '../../../config/api';
 import { useBusiness } from '../../../context/BusinessContext';
 import NoBusinessSelected from '../../../Components/Dashboard/NoBusinessSelected';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 const AdminCoupons = () => {
+  const isMobile = useIsMobile(768);
   const { selectedBusiness, loading: businessLoading } = useBusiness();
 
   // State
@@ -30,6 +35,7 @@ const AdminCoupons = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [expandedCouponId, setExpandedCouponId] = useState(null);
 
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -445,6 +451,300 @@ const AdminCoupons = () => {
     </div>
   );
 
+  // Mobile coupon card component
+  const MobileCouponCard = ({ coupon }) => {
+    const isExpanded = expandedCouponId === coupon._id;
+    const status = getCouponStatus(coupon);
+
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-card overflow-hidden">
+        <div
+          className="p-4"
+          onClick={() => setExpandedCouponId(isExpanded ? null : coupon._id)}
+        >
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <code className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 rounded text-sm font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                {coupon.code}
+              </code>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  copyToClipboard(coupon.code);
+                }}
+                className="p-1"
+              >
+                <Copy size={14} className="text-gray-400" />
+              </button>
+            </div>
+            {isExpanded ? (
+              <ChevronUp size={18} className="text-gray-400" />
+            ) : (
+              <ChevronDown size={18} className="text-gray-400" />
+            )}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-2xl font-bold text-gray-900 dark:text-white">
+              {coupon.discountType === 'percentage' ? `${coupon.discount}%` : `$${coupon.discount}`}
+            </span>
+            <Badge variant={status.variant} dot size="sm">{status.label}</Badge>
+          </div>
+
+          {coupon.description && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 line-clamp-1">
+              {coupon.description}
+            </p>
+          )}
+
+          <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+            <span className="flex items-center gap-1">
+              <Users size={12} />
+              {coupon.usedCount || 0}{coupon.maxUses && `/${coupon.maxUses}`} usos
+            </span>
+            {coupon.expiresAt && (
+              <span className={`flex items-center gap-1 ${isExpired(coupon) ? 'text-red-500' : ''}`}>
+                <Calendar size={12} />
+                {formatDate(coupon.expiresAt)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {isExpanded && (
+          <div className="px-4 pb-4 pt-2 border-t border-gray-100 dark:border-gray-700 flex gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleStatus(coupon);
+              }}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 ${
+                coupon.isActive
+                  ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                  : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+              }`}
+            >
+              <Power size={16} />
+              {coupon.isActive ? 'Desactivar' : 'Activar'}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openEditModal(coupon);
+              }}
+              className="flex-1 py-2.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+            >
+              <Edit2 size={16} />
+              Editar
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openDeleteModal(coupon);
+              }}
+              className="py-2.5 px-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-xl"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Status counts
+  const activeCoupons = coupons.filter(c => c.isActive && !isExpired(c) && !isMaxUsesReached(c)).length;
+  const inactiveCoupons = coupons.filter(c => !c.isActive).length;
+
+  // Mobile status tabs
+  const statusTabs = [
+    { key: '', label: 'Todos', count: coupons.length },
+    { key: 'active', label: 'Activos', count: activeCoupons },
+    { key: 'inactive', label: 'Inactivos', count: inactiveCoupons },
+  ];
+
+  // ========== MOBILE LAYOUT ==========
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow-sm">
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-lg font-bold text-gray-900 dark:text-white">Cupones</h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {coupons.length} cupones
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Search bar */}
+          <div className="px-4 pb-3">
+            <div className="relative">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar por código..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-gray-700 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          {/* Status Tabs */}
+          <div className="px-4 pb-3 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-2 min-w-max">
+              {statusTabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setStatusFilter(tab.key)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                    statusFilter === tab.key
+                      ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                  }`}
+                >
+                  {tab.label}
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    statusFilter === tab.key
+                      ? 'bg-indigo-200 dark:bg-indigo-800'
+                      : 'bg-gray-200 dark:bg-gray-600'
+                  }`}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="px-4 pt-4 grid grid-cols-3 gap-3">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-card text-center">
+            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{coupons.length}</p>
+            <p className="text-xs text-gray-500">Total</p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-card text-center">
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{activeCoupons}</p>
+            <p className="text-xs text-gray-500">Activos</p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-card text-center">
+            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+              {coupons.reduce((sum, c) => sum + (c.usedCount || 0), 0)}
+            </p>
+            <p className="text-xs text-gray-500">Usos</p>
+          </div>
+        </div>
+
+        {/* Coupons List */}
+        <div className="px-4 py-4 space-y-3 pb-24">
+          {loading || businessLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+            </div>
+          ) : filteredCoupons.length === 0 ? (
+            <div className="text-center py-12">
+              <Ticket size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+              <p className="text-gray-500 dark:text-gray-400">No hay cupones</p>
+            </div>
+          ) : (
+            filteredCoupons.map((coupon) => (
+              <MobileCouponCard key={coupon._id} coupon={coupon} />
+            ))
+          )}
+        </div>
+
+        {/* FAB */}
+        <button
+          onClick={() => {
+            resetForm();
+            setIsCreateModalOpen(true);
+          }}
+          className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center z-50"
+        >
+          <Plus size={24} />
+        </button>
+
+        {/* Mobile Create Modal */}
+        <MobileModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          title="Nuevo Cupón"
+        >
+          <CouponForm />
+          <button
+            onClick={handleCreateCoupon}
+            disabled={submitting}
+            className="w-full mt-4 py-3 bg-indigo-600 text-white rounded-xl font-semibold disabled:opacity-50"
+          >
+            {submitting ? 'Creando...' : 'Crear Cupón'}
+          </button>
+        </MobileModal>
+
+        {/* Mobile Edit Modal */}
+        <MobileModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedCoupon(null);
+            resetForm();
+          }}
+          title="Editar Cupón"
+        >
+          <CouponForm />
+          <button
+            onClick={handleEditCoupon}
+            disabled={submitting}
+            className="w-full mt-4 py-3 bg-indigo-600 text-white rounded-xl font-semibold disabled:opacity-50"
+          >
+            {submitting ? 'Guardando...' : 'Guardar Cambios'}
+          </button>
+        </MobileModal>
+
+        {/* Mobile Delete Modal */}
+        <MobileModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => {
+            setIsDeleteModalOpen(false);
+            setSelectedCoupon(null);
+          }}
+          title="Eliminar Cupón"
+        >
+          <div className="text-center py-4">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={28} className="text-red-600 dark:text-red-400" />
+            </div>
+            <p className="text-gray-600 dark:text-gray-300">
+              ¿Eliminar <strong>{selectedCoupon?.code}</strong>?
+            </p>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setSelectedCoupon(null);
+                }}
+                className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteCoupon}
+                disabled={submitting}
+                className="flex-1 py-3 bg-red-600 text-white rounded-xl font-semibold disabled:opacity-50"
+              >
+                {submitting ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </MobileModal>
+      </div>
+    );
+  }
+
+  // ========== DESKTOP LAYOUT ==========
   return (
     <div className="space-y-6 overflow-hidden max-w-full">
       {/* Header */}

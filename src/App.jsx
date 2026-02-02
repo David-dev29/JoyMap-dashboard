@@ -40,6 +40,8 @@ import BusinessOrders from './pages/business/Orders';
 import BusinessInventory from './pages/business/Inventory';
 import BusinessSales from './pages/business/Sales';
 import BusinessCoupons from './pages/business/Coupons';
+import BusinessKitchen from './pages/business/Kitchen';
+import BusinessMenu from './pages/business/Menu';
 
 // Shared Pages
 import NotFound from './pages/shared/NotFound';
@@ -198,6 +200,18 @@ const router = createBrowserRouter([
       {
         path: 'coupons',
         element: <BusinessCoupons />,
+      },
+      {
+        path: 'kitchen',
+        element: <BusinessKitchen />,
+      },
+      {
+        path: 'menu',
+        element: <BusinessMenu />,
+      },
+      {
+        path: 'product-categories',
+        element: <BusinessProductCategories />,
       },
       // Legacy sales routes (redirect to new sales page)
       {

@@ -1,79 +1,70 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Search,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Truck,
-  ChefHat,
-  Package,
-  User,
-  MapPin,
-  Phone,
-  Calendar,
-  RefreshCw,
-  ChevronDown,
-  ChevronUp,
-  AlertCircle,
-  CreditCard,
-  Banknote,
-  FileText,
-  Timer,
-} from 'lucide-react';
+  HiOutlineSearch,
+  HiOutlineClock,
+  HiOutlineCheckCircle,
+  HiOutlineXCircle,
+  HiOutlineTruck,
+  HiOutlineRefresh,
+  HiOutlineUser,
+  HiOutlinePhone,
+  HiOutlineLocationMarker,
+  HiOutlineChevronDown,
+  HiOutlineChevronUp,
+  HiOutlineExclamationCircle,
+  HiOutlineCreditCard,
+  HiOutlineCash,
+  HiOutlineDocumentText,
+  HiOutlineCalendar,
+  HiOutlineCube,
+} from 'react-icons/hi';
 import { toast } from 'sonner';
-import { Button, Input, Badge } from '../../components/ui';
 import { getMyOrders, updateOrderStatus } from '../../services/api';
 
 // Status configuration
 const statusConfig = {
-  pending: { label: 'Pendiente', variant: 'warning', icon: Clock },
-  preparing: { label: 'Preparando', variant: 'info', icon: ChefHat },
-  delivering: { label: 'En camino', variant: 'primary', icon: Truck },
-  delivered: { label: 'Entregado', variant: 'success', icon: CheckCircle },
-  cancelled: { label: 'Cancelado', variant: 'danger', icon: XCircle },
+  pending: {
+    label: 'Pendiente',
+    bg: 'bg-amber-100 dark:bg-amber-900/30',
+    text: 'text-amber-600',
+    icon: HiOutlineClock
+  },
+  preparing: {
+    label: 'Preparando',
+    bg: 'bg-indigo-100 dark:bg-indigo-900/30',
+    text: 'text-indigo-600',
+    icon: HiOutlineCube
+  },
+  delivering: {
+    label: 'En camino',
+    bg: 'bg-violet-100 dark:bg-violet-900/30',
+    text: 'text-violet-600',
+    icon: HiOutlineTruck
+  },
+  delivered: {
+    label: 'Entregado',
+    bg: 'bg-emerald-100 dark:bg-emerald-900/30',
+    text: 'text-emerald-600',
+    icon: HiOutlineCheckCircle
+  },
+  cancelled: {
+    label: 'Cancelado',
+    bg: 'bg-red-100 dark:bg-red-900/30',
+    text: 'text-red-600',
+    icon: HiOutlineXCircle
+  },
 };
 
-// 4 Kanban columns for delivery app
-const kanbanColumns = [
-  {
-    id: 'pending',
-    title: 'Pendientes',
-    statuses: ['pending'],
-    color: 'amber',
-    icon: Clock,
-    bgClass: 'bg-amber-100 dark:bg-amber-900/30',
-    textClass: 'text-amber-600',
-  },
-  {
-    id: 'preparing',
-    title: 'En Preparacion',
-    statuses: ['preparing'],
-    color: 'indigo',
-    icon: ChefHat,
-    bgClass: 'bg-indigo-100 dark:bg-indigo-900/30',
-    textClass: 'text-indigo-600',
-  },
-  {
-    id: 'delivering',
-    title: 'En Camino',
-    statuses: ['delivering'],
-    color: 'violet',
-    icon: Truck,
-    bgClass: 'bg-violet-100 dark:bg-violet-900/30',
-    textClass: 'text-violet-600',
-  },
-  {
-    id: 'delivered',
-    title: 'Entregadas',
-    statuses: ['delivered'],
-    color: 'emerald',
-    icon: CheckCircle,
-    bgClass: 'bg-emerald-100 dark:bg-emerald-900/30',
-    textClass: 'text-emerald-600',
-  },
+// Tab filters
+const tabs = [
+  { id: 'all', label: 'Todos', statuses: null },
+  { id: 'pending', label: 'Pendientes', statuses: ['pending'] },
+  { id: 'preparing', label: 'Preparando', statuses: ['preparing'] },
+  { id: 'delivering', label: 'En camino', statuses: ['delivering'] },
+  { id: 'delivered', label: 'Entregados', statuses: ['delivered'] },
 ];
 
-// Helper to extract customer data from API structure
+// Helper functions
 const getCustomerData = (order) => {
   const name = order.customerId?.name || order.customer?.name || order.customerName || 'Cliente';
   const phone = order.customerId?.phone || order.customer?.phone || order.customerPhone || '';
@@ -84,22 +75,16 @@ const getCustomerData = (order) => {
   return { name, phone, address, reference };
 };
 
-// Helper to get item image from multiple possible sources
 const getItemImage = (item) => {
-  return item.image ||
-    item.productId?.image ||
-    item.productId?.images?.[0] ||
-    item.product?.image ||
-    item.product?.images?.[0] ||
-    null;
+  return item.image || item.productId?.image || item.productId?.images?.[0] ||
+         item.product?.image || item.product?.images?.[0] || null;
 };
 
-// Get item name from multiple possible sources
 const getItemName = (item) => {
   return item.name || item.productId?.name || item.product?.name || 'Producto';
 };
 
-// Timer component for pending orders - POS/Kitchen style
+// Timer component
 const PendingTimer = ({ createdAt }) => {
   const [elapsed, setElapsed] = useState(0);
 
@@ -114,23 +99,21 @@ const PendingTimer = ({ createdAt }) => {
     return () => clearInterval(interval);
   }, [createdAt]);
 
-  const cappedSeconds = Math.min(elapsed, 3600);
-  const minutes = Math.floor(cappedSeconds / 60);
-  const seconds = cappedSeconds % 60;
+  const minutes = Math.floor(Math.min(elapsed, 3600) / 60);
+  const seconds = Math.min(elapsed, 3600) % 60;
   const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
-  let colorClasses = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+  let colorClasses = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
   if (minutes >= 45) {
     colorClasses = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 animate-pulse';
   } else if (minutes >= 30) {
     colorClasses = 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
   } else if (minutes >= 15) {
-    colorClasses = 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
+    colorClasses = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
   }
 
   return (
-    <span className={`text-xs font-mono font-bold flex items-center gap-1 px-2 py-1 rounded-lg ${colorClasses}`}>
-      <Timer size={14} />
+    <span className={`text-xs font-mono font-bold px-2 py-1 rounded-lg ${colorClasses}`}>
       {timeStr}
     </span>
   );
@@ -138,11 +121,13 @@ const PendingTimer = ({ createdAt }) => {
 
 const Orders = () => {
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('all');
   const [updating, setUpdating] = useState(null);
-  const [expandedOrderId, setExpandedOrderId] = useState(null); // Track which order is expanded
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
 
   const previousOrderIdsRef = useRef(new Set());
   const isFirstLoadRef = useRef(true);
@@ -150,6 +135,7 @@ const Orders = () => {
   const loadOrders = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
+      else setRefreshing(true);
       setError('');
 
       const response = await getMyOrders();
@@ -165,6 +151,7 @@ const Orders = () => {
       toast.error('Error al cargar las ordenes');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -202,19 +189,34 @@ const Orders = () => {
     previousOrderIdsRef.current = currentIds;
   }, [orders]);
 
+  // Filter orders
   const filteredOrders = orders.filter(order => {
-    if (!searchTerm) return true;
-    const orderId = order.orderNumber?.toString() || order._id?.toString()?.slice(-6) || '';
-    const customer = getCustomerData(order);
-    return orderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.phone.includes(searchTerm);
+    // Tab filter
+    const currentTab = tabs.find(t => t.id === activeTab);
+    if (currentTab?.statuses && !currentTab.statuses.includes(order.status)) {
+      return false;
+    }
+
+    // Search filter
+    if (searchTerm) {
+      const orderId = order.orderNumber?.toString() || order._id?.toString()?.slice(-6) || '';
+      const customer = getCustomerData(order);
+      return orderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.phone.includes(searchTerm);
+    }
+
+    return true;
   });
 
-  const getColumnOrders = (column) => {
-    return filteredOrders.filter(order => column.statuses.includes(order.status));
+  // Get count for each tab
+  const getTabCount = (tabId) => {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab?.statuses) return orders.length;
+    return orders.filter(o => tab.statuses.includes(o.status)).length;
   };
 
+  // Action handlers
   const handleStatusChange = async (order, newStatus, actionLabel) => {
     if (!newStatus) return;
     const orderNum = order.orderNumber || order._id?.toString()?.slice(-6);
@@ -236,11 +238,18 @@ const Orders = () => {
     }
   };
 
-  // Action handlers for each column
   const handleAccept = (order) => handleStatusChange(order, 'preparing', 'aceptada');
   const handleReject = (order) => handleStatusChange(order, 'cancelled', 'rechazada');
   const handleReadyForDelivery = (order) => handleStatusChange(order, 'delivering', 'lista para envio');
   const handleDelivered = (order) => handleStatusChange(order, 'delivered', 'entregada');
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN',
+      minimumFractionDigits: 0,
+    }).format(amount || 0);
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
@@ -249,10 +258,22 @@ const Orders = () => {
     });
   };
 
-  const formatCurrency = (amount) => `$${(amount || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+  const formatTimeAgo = (dateString) => {
+    if (!dateString) return '';
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
 
-  // Order Card Component
-  const OrderCard = ({ order }) => {
+    if (diffMins < 1) return 'Ahora';
+    if (diffMins < 60) return `${diffMins} min`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h`;
+    return `${Math.floor(diffHours / 24)}d`;
+  };
+
+  // Mobile Order Card
+  const MobileOrderCard = ({ order }) => {
     const expanded = expandedOrderId === order._id;
     const toggleExpanded = () => setExpandedOrderId(expanded ? null : order._id);
     const config = statusConfig[order.status] || statusConfig.pending;
@@ -261,114 +282,92 @@ const Orders = () => {
     const isUpdating = updating === order._id;
 
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-all overflow-hidden">
-        <div className="p-4">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-3">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card overflow-hidden">
+        {/* Card Header */}
+        <button
+          onClick={toggleExpanded}
+          className="w-full p-4 text-left active:bg-gray-50 dark:active:bg-gray-800 transition-colors"
+        >
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <p className="font-semibold text-gray-900 dark:text-white">
+                Pedido #{order.orderNumber || order._id?.toString()?.slice(-6)}
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{customer.name}</p>
+            </div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-900 dark:text-white">
-                #{order.orderNumber || order._id?.toString()?.slice(-6)}
-              </span>
-              <Badge variant={config.variant} size="sm">
-                <StatusIcon size={12} className="mr-1" />
+              {order.status === 'pending' && <PendingTimer createdAt={order.createdAt} />}
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
                 {config.label}
-              </Badge>
+              </span>
             </div>
-            {order.status === 'pending' && <PendingTimer createdAt={order.createdAt} />}
           </div>
 
-          {/* Customer Info */}
-          <div className="mb-3 p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
-            <div className="flex items-center gap-2 mb-1">
-              <User size={14} className="text-gray-400" />
-              <span className="text-sm font-medium text-gray-900 dark:text-white">{customer.name}</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+              <HiOutlineCube className="w-4 h-4" />
+              <span>{order.items?.length || 0} productos</span>
+              <span className="text-gray-300 dark:text-gray-600">•</span>
+              <span>{formatTimeAgo(order.createdAt)}</span>
             </div>
-            {customer.phone && (
-              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                <Phone size={12} />
-                {customer.phone}
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(order.total)}</span>
+              {expanded ? (
+                <HiOutlineChevronUp className="w-5 h-5 text-gray-400" />
+              ) : (
+                <HiOutlineChevronDown className="w-5 h-5 text-gray-400" />
+              )}
+            </div>
           </div>
+        </button>
 
-          {/* Items Summary */}
-          <div className="mb-3">
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{order.items?.length || 0} productos</p>
-            {!expanded && (
-              <div className="space-y-1">
-                {(order.items || []).slice(0, 2).map((item, idx) => (
-                  <div key={idx} className="text-sm text-gray-600 dark:text-gray-300">
-                    <span className="font-medium">{item.quantity || 1}x</span> {getItemName(item)}
-                  </div>
-                ))}
-                {(order.items?.length || 0) > 2 && (
-                  <p className="text-xs text-gray-400">+{order.items.length - 2} mas...</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Total and Expand */}
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-slate-700">
-            <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(order.total)}</span>
-            <button
-              onClick={toggleExpanded}
-              className="flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition-colors"
-            >
-              {expanded ? <><span>Menos</span><ChevronUp size={16} /></> : <><span>Ver mas</span><ChevronDown size={16} /></>}
-            </button>
-          </div>
-        </div>
-
-        {/* Expanded View */}
+        {/* Expanded Content */}
         {expanded && (
-          <div className="border-t border-gray-100 dark:border-slate-700 p-4 bg-gray-50/50 dark:bg-slate-700/30">
-            {/* Customer Details */}
-            <div className="mb-4">
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                <User size={16} /> Cliente
+          <div className="border-t border-gray-100 dark:border-gray-800 p-4 bg-gray-50 dark:bg-gray-800/50 space-y-4">
+            {/* Customer Info */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <HiOutlineUser className="w-4 h-4" /> Cliente
               </h4>
               <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
                 <p>{customer.name}</p>
-                {customer.phone && <p className="flex items-center gap-1"><Phone size={12} /> {customer.phone}</p>}
+                {customer.phone && (
+                  <a href={`tel:${customer.phone}`} className="flex items-center gap-1 text-primary-600">
+                    <HiOutlinePhone className="w-4 h-4" /> {customer.phone}
+                  </a>
+                )}
                 {customer.address && (
                   <p className="flex items-start gap-1">
-                    <MapPin size={12} className="mt-0.5" />
+                    <HiOutlineLocationMarker className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     {customer.address}
-                    {customer.reference && <span className="text-xs text-gray-500"> (Ref: {customer.reference})</span>}
                   </p>
                 )}
               </div>
             </div>
 
-            {/* Products with Images */}
-            <div className="mb-4">
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                <Package size={16} /> Productos
+            {/* Products */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <HiOutlineCube className="w-4 h-4" /> Productos
               </h4>
               <div className="space-y-2">
                 {(order.items || []).map((item, idx) => {
                   const itemImage = getItemImage(item);
                   const itemName = getItemName(item);
                   return (
-                    <div key={idx} className="flex items-center gap-3 p-2 bg-white dark:bg-slate-800 rounded-lg">
+                    <div key={idx} className="flex items-center gap-3 p-2 bg-white dark:bg-gray-900 rounded-xl">
                       {itemImage ? (
-                        <img
-                          src={itemImage}
-                          alt={itemName}
-                          className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                          onError={(e) => { e.target.style.display = 'none'; }}
-                        />
+                        <img src={itemImage} alt={itemName} className="w-10 h-10 rounded-lg object-cover" />
                       ) : (
-                        <div className="w-12 h-12 rounded-lg bg-gray-200 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
-                          <Package size={18} className="text-gray-400" />
+                        <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                          <HiOutlineCube className="w-5 h-5 text-gray-400" />
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{itemName}</p>
                         <p className="text-xs text-gray-500">{formatCurrency(item.price)} x {item.quantity || 1}</p>
                       </div>
-                      <span className="font-semibold text-gray-900 dark:text-white flex-shrink-0">
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
                         {formatCurrency((item.price || 0) * (item.quantity || 1))}
                       </span>
                     </div>
@@ -377,71 +376,81 @@ const Orders = () => {
               </div>
             </div>
 
-            {/* Order Summary */}
-            <div className="mb-4 p-3 bg-white dark:bg-slate-800 rounded-lg space-y-2">
+            {/* Summary */}
+            <div className="p-3 bg-white dark:bg-gray-900 rounded-xl space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Subtotal</span>
-                <span>{formatCurrency(order.subtotal || order.total)}</span>
+                <span className="text-gray-900 dark:text-white">{formatCurrency(order.subtotal || order.total)}</span>
               </div>
               {(order.deliveryFee > 0 || order.deliveryCost > 0) && (
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Envio</span>
-                  <span>{formatCurrency(order.deliveryFee || order.deliveryCost)}</span>
+                  <span className="text-gray-900 dark:text-white">{formatCurrency(order.deliveryFee || order.deliveryCost)}</span>
                 </div>
               )}
-              {order.discount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Descuento</span>
-                  <span className="text-emerald-600">-{formatCurrency(order.discount)}</span>
-                </div>
-              )}
-              <div className="flex justify-between font-semibold pt-2 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex justify-between font-semibold pt-2 border-t border-gray-100 dark:border-gray-800">
                 <span>Total</span>
-                <span className="text-indigo-600 dark:text-indigo-400">{formatCurrency(order.total)}</span>
+                <span className="text-primary-600">{formatCurrency(order.total)}</span>
               </div>
             </div>
 
             {/* Payment & Notes */}
             {order.paymentMethod && (
-              <div className="mb-3 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                {order.paymentMethod === 'cash' ? <Banknote size={16} className="text-emerald-500" /> : <CreditCard size={16} className="text-blue-500" />}
-                {order.paymentMethod === 'cash' ? 'Efectivo' : order.paymentMethod === 'card' ? 'Tarjeta' : order.paymentMethod}
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                {order.paymentMethod === 'cash' ? (
+                  <HiOutlineCash className="w-4 h-4 text-emerald-500" />
+                ) : (
+                  <HiOutlineCreditCard className="w-4 h-4 text-blue-500" />
+                )}
+                {order.paymentMethod === 'cash' ? 'Efectivo' : 'Tarjeta'}
               </div>
             )}
             {order.notes && (
-              <div className="mb-3 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-sm">
-                <FileText size={14} className="inline text-amber-600 mr-1" />
+              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl text-sm">
+                <HiOutlineDocumentText className="inline w-4 h-4 text-amber-600 mr-1" />
                 <span className="text-amber-700 dark:text-amber-300">{order.notes}</span>
               </div>
             )}
-            <div className="mb-3 text-xs text-gray-500 flex items-center gap-1">
-              <Calendar size={12} /> {formatDate(order.createdAt)}
+            <div className="text-xs text-gray-500 flex items-center gap-1">
+              <HiOutlineCalendar className="w-4 h-4" /> {formatDate(order.createdAt)}
             </div>
 
-            {/* Action Buttons by Status */}
+            {/* Action Buttons */}
             {order.status === 'pending' && (
-              <div className="flex gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
-                <Button variant="primary" className="flex-1" onClick={() => handleAccept(order)} disabled={isUpdating}>
-                  <CheckCircle size={18} className="mr-2" /> Aceptar
-                </Button>
-                <Button variant="danger" className="flex-1" onClick={() => handleReject(order)} disabled={isUpdating}>
-                  <XCircle size={18} className="mr-2" /> Rechazar
-                </Button>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => handleAccept(order)}
+                  disabled={isUpdating}
+                  className="flex-1 py-3 bg-primary-600 text-white rounded-xl font-medium active:scale-95 transition-transform disabled:opacity-50"
+                >
+                  Aceptar
+                </button>
+                <button
+                  onClick={() => handleReject(order)}
+                  disabled={isUpdating}
+                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium active:scale-95 transition-transform disabled:opacity-50"
+                >
+                  Rechazar
+                </button>
               </div>
             )}
             {order.status === 'preparing' && (
-              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                <Button variant="primary" className="w-full" onClick={() => handleReadyForDelivery(order)} disabled={isUpdating}>
-                  <Truck size={18} className="mr-2" /> Listo para Envio
-                </Button>
-              </div>
+              <button
+                onClick={() => handleReadyForDelivery(order)}
+                disabled={isUpdating}
+                className="w-full py-3 bg-primary-600 text-white rounded-xl font-medium active:scale-95 transition-transform disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <HiOutlineTruck className="w-5 h-5" /> Listo para Envio
+              </button>
             )}
             {order.status === 'delivering' && (
-              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                <Button variant="success" className="w-full" onClick={() => handleDelivered(order)} disabled={isUpdating}>
-                  <CheckCircle size={18} className="mr-2" /> Marcar Entregado
-                </Button>
-              </div>
+              <button
+                onClick={() => handleDelivered(order)}
+                disabled={isUpdating}
+                className="w-full py-3 bg-emerald-600 text-white rounded-xl font-medium active:scale-95 transition-transform disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <HiOutlineCheckCircle className="w-5 h-5" /> Marcar Entregado
+              </button>
             )}
           </div>
         )}
@@ -449,90 +458,104 @@ const Orders = () => {
     );
   };
 
-  // Kanban Column Component
-  const KanbanColumn = ({ column }) => {
-    const columnOrders = getColumnOrders(column);
-    const Icon = column.icon;
-
-    return (
-      <div className="flex flex-col min-w-[280px] lg:min-w-0">
-        {/* Column Header with Count Badge */}
-        <div className="flex items-center justify-between mb-4 px-1">
-          <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${column.bgClass} ${column.textClass}`}>
-              <Icon size={18} />
-            </div>
-            <h3 className="font-semibold text-gray-900 dark:text-white">{column.title}</h3>
-          </div>
-          <span className={`px-2.5 py-1 rounded-full text-sm font-bold ${column.bgClass} ${column.textClass}`}>
-            {columnOrders.length}
-          </span>
-        </div>
-
-        <div className="flex-1 space-y-3">
-          {columnOrders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${column.bgClass} ${column.textClass} opacity-50`}>
-                <Icon size={24} />
-              </div>
-              <p className="text-sm text-gray-500">Sin ordenes</p>
-            </div>
-          ) : (
-            columnOrders.map((order) => <OrderCard key={order._id} order={order} />)
-          )}
-        </div>
-      </div>
-    );
-  };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-slate-500 dark:text-slate-400">Cargando ordenes...</span>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-3 border-primary-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm text-gray-500 dark:text-gray-400">Cargando pedidos...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 h-full">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Ordenes</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Gestiona los pedidos de tu negocio</p>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      {/* Search Bar - Sticky */}
+      <div className="sticky top-14 z-20 bg-white dark:bg-gray-900 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+        <div className="relative">
+          <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar pedido, cliente..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-10 py-2.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900 dark:text-white placeholder-gray-400"
+          />
+          <button
+            onClick={() => loadOrders(false)}
+            className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 ${refreshing ? 'animate-spin' : ''}`}
+          >
+            <HiOutlineRefresh className="w-5 h-5 text-gray-500" />
+          </button>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="w-64">
-            <Input
-              placeholder="Buscar orden..."
-              leftIcon={<Search size={18} />}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <Button variant="ghost" leftIcon={<RefreshCw size={18} />} onClick={() => loadOrders(true)}>
-            Actualizar
-          </Button>
+      </div>
+
+      {/* Filter Tabs - Horizontal Scroll */}
+      <div className="sticky top-[105px] z-10 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+        <div className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-none">
+          {tabs.map((tab) => {
+            const count = getTabCount(tab.id);
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  flex items-center gap-1.5 px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium
+                  transition-all active:scale-95
+                  ${isActive
+                    ? 'bg-primary-600 text-white shadow-sm'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                  }
+                `}
+              >
+                {tab.label}
+                <span className={`
+                  min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center
+                  ${isActive
+                    ? 'bg-white/20 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                  }
+                `}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
-          <AlertCircle className="text-red-500" size={20} />
-          <p className="text-red-700 dark:text-red-400">{error}</p>
-          <Button variant="ghost" size="sm" onClick={() => loadOrders(true)}>Reintentar</Button>
+        <div className="mx-4 mt-4 flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl">
+          <HiOutlineExclamationCircle className="w-5 h-5 text-red-500" />
+          <p className="text-sm text-red-700 dark:text-red-400 flex-1">{error}</p>
+          <button
+            onClick={() => loadOrders(true)}
+            className="text-sm font-medium text-red-600"
+          >
+            Reintentar
+          </button>
         </div>
       )}
 
-      {/* Kanban Board - 4 columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto pb-4">
-        {kanbanColumns.map((column) => (
-          <KanbanColumn key={column.id} column={column} />
-        ))}
+      {/* Orders List */}
+      <div className="p-4 space-y-3 pb-24">
+        {filteredOrders.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <HiOutlineCube className="w-8 h-8 text-gray-400" />
+            </div>
+            <p className="text-gray-500 dark:text-gray-400">
+              {searchTerm ? 'No se encontraron pedidos' : 'No hay pedidos en esta categoria'}
+            </p>
+          </div>
+        ) : (
+          filteredOrders.map((order) => (
+            <MobileOrderCard key={order._id} order={order} />
+          ))
+        )}
       </div>
     </div>
   );

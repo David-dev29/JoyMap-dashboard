@@ -17,12 +17,15 @@ import {
   Smartphone,
   Palette,
   RotateCcw,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Card, Button, Input, Toggle } from '../../../components/ui';
 import { useAuth } from '../../../context/AuthContext';
 import { useBusiness } from '../../../context/BusinessContext';
 import { updateBusiness, getBusinessById } from '../../../services/api';
 import NoBusinessSelected from '../../../Components/Dashboard/NoBusinessSelected';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 const DAYS_OF_WEEK = [
   { key: 'monday', label: 'Lunes' },
@@ -35,6 +38,7 @@ const DAYS_OF_WEEK = [
 ];
 
 const BusinessProfile = () => {
+  const isMobile = useIsMobile(768);
   const { user } = useAuth();
   const { selectedBusiness, loading: businessLoading, setSelectedBusiness } = useBusiness();
   const isAdmin = user?.role === 'admin';
@@ -43,6 +47,7 @@ const BusinessProfile = () => {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [expandedSection, setExpandedSection] = useState('info');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -272,6 +277,321 @@ const BusinessProfile = () => {
     }
   };
 
+  // Mobile collapsible section component
+  const MobileSection = ({ id, title, icon: Icon, children }) => {
+    const isExpanded = expandedSection === id;
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-card overflow-hidden">
+        <button
+          onClick={() => setExpandedSection(isExpanded ? null : id)}
+          className="w-full px-4 py-4 flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+              <Icon size={18} className="text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <span className="font-semibold text-gray-900 dark:text-white">{title}</span>
+          </div>
+          {isExpanded ? (
+            <ChevronUp size={20} className="text-gray-400" />
+          ) : (
+            <ChevronDown size={20} className="text-gray-400" />
+          )}
+        </button>
+        {isExpanded && (
+          <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+            {children}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ========== MOBILE LAYOUT ==========
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow-sm">
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Perfil del Negocio
+                </h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {selectedBusiness?.name}
+                </p>
+              </div>
+              <div className={`w-3 h-3 rounded-full ${formData.isOpen ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+            </div>
+          </div>
+        </div>
+
+        {/* Success/Error messages */}
+        {(success || error) && (
+          <div className="px-4 pt-4">
+            {success && (
+              <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-xl text-sm">
+                <Check size={18} />
+                <span>Cambios guardados</span>
+              </div>
+            )}
+            {error && (
+              <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-xl text-sm">
+                <X size={18} />
+                <span>{error}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Mobile Sections */}
+        <div className="px-4 py-4 space-y-3 pb-24">
+          {/* Images Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-card p-4">
+            <div className="flex gap-4">
+              {/* Logo */}
+              <div
+                onClick={() => logoInputRef.current?.click()}
+                className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden flex-shrink-0"
+              >
+                {logoPreview ? (
+                  <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                    <Upload size={20} />
+                    <span className="text-xs mt-1">Logo</span>
+                  </div>
+                )}
+              </div>
+              {/* Banner */}
+              <div
+                onClick={() => bannerInputRef.current?.click()}
+                className="flex-1 h-20 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden"
+              >
+                {bannerPreview ? (
+                  <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                    <Upload size={20} />
+                    <span className="text-xs mt-1">Banner</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImageSelect('logo', e)} />
+            <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImageSelect('banner', e)} />
+          </div>
+
+          {/* Basic Info Section */}
+          <MobileSection id="info" title="Información Básica" icon={Store}>
+            <div className="space-y-4">
+              <Input
+                label="Nombre"
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Descripción</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl text-sm"
+                />
+              </div>
+              <Input
+                label="Dirección"
+                leftIcon={<MapPin size={16} />}
+                value={formData.address}
+                onChange={(e) => handleInputChange('address', e.target.value)}
+              />
+              <Input
+                label="Teléfono"
+                leftIcon={<Phone size={16} />}
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+              />
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white text-sm">Estado</p>
+                  <p className="text-xs text-gray-500">{formData.isOpen ? 'Abierto' : 'Cerrado'}</p>
+                </div>
+                <Toggle
+                  checked={formData.isOpen}
+                  onChange={(checked) => handleInputChange('isOpen', checked)}
+                />
+              </div>
+            </div>
+          </MobileSection>
+
+          {/* Delivery Section */}
+          <MobileSection id="delivery" title="Entrega" icon={Truck}>
+            <div className="space-y-4">
+              <Input
+                label="Costo de Envío"
+                type="number"
+                leftIcon={<DollarSign size={16} />}
+                value={formData.deliveryCost}
+                onChange={(e) => handleInputChange('deliveryCost', parseFloat(e.target.value) || 0)}
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Tiempo Mín (min)"
+                  type="number"
+                  value={formData.deliveryTimeMin}
+                  onChange={(e) => handleInputChange('deliveryTimeMin', parseInt(e.target.value) || 0)}
+                />
+                <Input
+                  label="Tiempo Máx (min)"
+                  type="number"
+                  value={formData.deliveryTimeMax}
+                  onChange={(e) => handleInputChange('deliveryTimeMax', parseInt(e.target.value) || 0)}
+                />
+              </div>
+              <Input
+                label="Pedido Mínimo"
+                type="number"
+                leftIcon={<ShoppingBag size={16} />}
+                value={formData.minOrderAmount}
+                onChange={(e) => handleInputChange('minOrderAmount', parseFloat(e.target.value) || 0)}
+              />
+            </div>
+          </MobileSection>
+
+          {/* Payment Methods Section */}
+          <MobileSection id="payments" title="Métodos de Pago" icon={CreditCard}>
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 p-3 border border-gray-200 dark:border-slate-600 rounded-xl">
+                <input
+                  type="checkbox"
+                  checked={paymentMethods.cash}
+                  onChange={(e) => handlePaymentMethodChange('cash', e.target.checked)}
+                  className="w-5 h-5 text-emerald-600 rounded"
+                />
+                <Banknote size={18} className="text-emerald-600" />
+                <span className="font-medium text-gray-900 dark:text-white text-sm">Efectivo</span>
+              </label>
+              <label className="flex items-center gap-3 p-3 border border-gray-200 dark:border-slate-600 rounded-xl">
+                <input
+                  type="checkbox"
+                  checked={paymentMethods.card}
+                  onChange={(e) => handlePaymentMethodChange('card', e.target.checked)}
+                  className="w-5 h-5 text-blue-600 rounded"
+                />
+                <CreditCard size={18} className="text-blue-600" />
+                <span className="font-medium text-gray-900 dark:text-white text-sm">Tarjeta</span>
+              </label>
+              <label className="flex items-center gap-3 p-3 border border-gray-200 dark:border-slate-600 rounded-xl">
+                <input
+                  type="checkbox"
+                  checked={paymentMethods.transfer}
+                  onChange={(e) => handlePaymentMethodChange('transfer', e.target.checked)}
+                  className="w-5 h-5 text-purple-600 rounded"
+                />
+                <Smartphone size={18} className="text-purple-600" />
+                <span className="font-medium text-gray-900 dark:text-white text-sm">Transferencia</span>
+              </label>
+            </div>
+          </MobileSection>
+
+          {/* Brand Color Section */}
+          <MobileSection id="brand" title="Color de Marca" icon={Palette}>
+            <div className="space-y-4">
+              <div className="flex gap-2 flex-wrap">
+                {BRAND_COLORS.map(color => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => handleBrandColorChange(color)}
+                    className={`w-10 h-10 rounded-lg border-2 ${
+                      brandColor === color ? 'border-gray-900 dark:border-white ring-2 ring-offset-2' : 'border-transparent'
+                    }`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={brandColor}
+                  onChange={(e) => handleBrandColorChange(e.target.value)}
+                  className="w-10 h-10 rounded-lg cursor-pointer"
+                />
+                <span className="text-sm text-gray-500">Color personalizado</span>
+              </div>
+            </div>
+          </MobileSection>
+
+          {/* Schedule Section */}
+          <MobileSection id="schedule" title="Horarios" icon={Clock}>
+            <div className="space-y-2">
+              {DAYS_OF_WEEK.map(({ key, label }) => (
+                <div
+                  key={key}
+                  className={`p-3 rounded-xl ${
+                    schedule[key]?.isOpen ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-gray-50 dark:bg-gray-700/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Toggle
+                      checked={schedule[key]?.isOpen}
+                      onChange={(checked) => handleScheduleChange(key, 'isOpen', checked)}
+                      size="sm"
+                    />
+                    <span className={`text-sm font-medium ${schedule[key]?.isOpen ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                      {label}
+                    </span>
+                  </div>
+                  {schedule[key]?.isOpen && (
+                    <div className="flex items-center gap-2 pl-8">
+                      <input
+                        type="time"
+                        value={schedule[key]?.open || '09:00'}
+                        onChange={(e) => handleScheduleChange(key, 'open', e.target.value)}
+                        className="flex-1 min-w-0 px-2 py-1.5 text-sm bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg"
+                      />
+                      <span className="text-gray-400 text-xs">a</span>
+                      <input
+                        type="time"
+                        value={schedule[key]?.close || '21:00'}
+                        onChange={(e) => handleScheduleChange(key, 'close', e.target.value)}
+                        className="flex-1 min-w-0 px-2 py-1.5 text-sm bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </MobileSection>
+        </div>
+
+        {/* Sticky Save Button */}
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50">
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="w-full py-3 bg-indigo-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {saving ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Guardando...
+              </>
+            ) : (
+              <>
+                <Save size={18} />
+                Guardar Cambios
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ========== DESKTOP LAYOUT ==========
   return (
     <div className="space-y-6 overflow-hidden max-w-full">
       {/* Header */}
