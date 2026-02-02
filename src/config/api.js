@@ -147,6 +147,11 @@ export const ENDPOINTS = {
     validate: `${API_BASE_URL}/coupons/validate`,
     use: `${API_BASE_URL}/coupons/use`,
   },
+
+  // Estadísticas globales (Admin)
+  stats: {
+    global: `${API_BASE_URL}/stats/global`,
+  },
 };
 
 /**
