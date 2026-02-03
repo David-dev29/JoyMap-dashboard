@@ -26,7 +26,7 @@ import { Button, Input, Badge } from '../../../components/ui';
 import { useAuth } from '../../../context/AuthContext';
 import { useBusiness } from '../../../context/BusinessContext';
 import { getBusinessOrders, updateOrderStatus } from '../../../services/api';
-import NoBusinessSelected from '../../../Components/Dashboard/NoBusinessSelected';
+import { BusinessPanelLayout } from '../../../Components/layout';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 
 // Status configuration
@@ -124,7 +124,7 @@ const PendingTimer = ({ createdAt }) => {
   const seconds = cappedSeconds % 60;
   const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
-  let colorClasses = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+  let colorClasses = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
   if (minutes >= 45) {
     colorClasses = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 animate-pulse';
   } else if (minutes >= 30) {
@@ -218,15 +218,9 @@ const BusinessOrders = () => {
     previousOrderIdsRef.current = currentIds;
   }, [orders]);
 
-  // Guard: No business selected
+  // Guard: No business selected - handled by BusinessPanelLayout for admins
   if (isAdmin && !selectedBusiness && !businessLoading) {
-    return (
-      <NoBusinessSelected
-        icon={ShoppingCart}
-        title="Selecciona un negocio"
-        message="Para ver los pedidos, primero selecciona un negocio desde el selector en la barra superior."
-      />
-    );
+    return <BusinessPanelLayout>{null}</BusinessPanelLayout>;
   }
 
   const filteredOrders = orders.filter(order => {
@@ -545,25 +539,20 @@ const BusinessOrders = () => {
   if (isMobile) {
     const mobileOrders = getMobileFilteredOrders();
 
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        {/* Sticky Header */}
-        <div className="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow-sm">
-          <div className="px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-lg font-bold text-gray-900 dark:text-white">Pedidos</h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {orders.length} totales
-                </p>
-              </div>
-              <button
-                onClick={() => loadOrders(true)}
-                className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center"
-              >
-                <RefreshCw size={18} className="text-gray-600 dark:text-gray-300" />
-              </button>
-            </div>
+    const mobileContent = (
+      <div className="bg-gray-50 dark:bg-gray-900 min-h-full">
+        {/* Search and Filter Header */}
+        <div className="sticky top-0 z-30 bg-white dark:bg-gray-800 shadow-sm px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {orders.length} pedidos
+            </p>
+            <button
+              onClick={() => loadOrders(true)}
+              className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center"
+            >
+              <RefreshCw size={16} className="text-gray-600 dark:text-gray-300" />
+            </button>
           </div>
 
           {/* Search bar */}
@@ -642,10 +631,16 @@ const BusinessOrders = () => {
         </div>
       </div>
     );
+
+    // Wrap with BusinessPanelLayout for admin users
+    if (isAdmin) {
+      return <BusinessPanelLayout>{mobileContent}</BusinessPanelLayout>;
+    }
+    return mobileContent;
   }
 
   // ========== DESKTOP LAYOUT ==========
-  return (
+  const desktopContent = (
     <div className="space-y-6 h-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -685,6 +680,12 @@ const BusinessOrders = () => {
       </div>
     </div>
   );
+
+  // Wrap with BusinessPanelLayout for admin users
+  if (isAdmin) {
+    return <BusinessPanelLayout>{desktopContent}</BusinessPanelLayout>;
+  }
+  return desktopContent;
 };
 
 export default BusinessOrders;

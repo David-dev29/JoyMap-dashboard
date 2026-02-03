@@ -23,7 +23,7 @@ import {
   deleteCategory,
 } from '../../../services/api';
 import { authFetch, ENDPOINTS } from '../../../config/api';
-import NoBusinessSelected from '../../../Components/Dashboard/NoBusinessSelected';
+import { BusinessPanelLayout } from '../../../Components/layout';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 
 const ProductCategories = () => {
@@ -100,15 +100,9 @@ const ProductCategories = () => {
     loadCategories();
   }, [selectedBusiness]);
 
-  // Guard: No business selected
+  // Guard: No business selected - handled by BusinessPanelLayout for admins
   if (isAdmin && !selectedBusiness && !businessLoading) {
-    return (
-      <NoBusinessSelected
-        icon={Boxes}
-        title="Selecciona un negocio"
-        message="Para gestionar las categorias de productos, primero selecciona un negocio desde el selector en la barra superior."
-      />
-    );
+    return <BusinessPanelLayout>{null}</BusinessPanelLayout>;
   }
 
   // Loading state
@@ -341,20 +335,13 @@ const ProductCategories = () => {
 
   // ========== MOBILE LAYOUT ==========
   if (isMobile) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        {/* Sticky Header */}
-        <div className="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow-sm">
-          <div className="px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-lg font-bold text-gray-900 dark:text-white">Categorías</h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {categories.length} categorías
-                </p>
-              </div>
-            </div>
-          </div>
+    const mobileContent = (
+      <div className="bg-gray-50 dark:bg-gray-900 min-h-full">
+        {/* Header */}
+        <div className="px-4 py-3">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {categories.length} categorías
+          </p>
         </div>
 
         {/* Stats Card */}
@@ -391,7 +378,7 @@ const ProductCategories = () => {
         {/* FAB */}
         <button
           onClick={openCreateModal}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center z-50"
+          className="fixed bottom-24 right-4 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center z-50"
         >
           <Plus size={24} />
         </button>
@@ -498,10 +485,16 @@ const ProductCategories = () => {
         </MobileModal>
       </div>
     );
+
+    // Wrap with BusinessPanelLayout for admin users
+    if (isAdmin) {
+      return <BusinessPanelLayout>{mobileContent}</BusinessPanelLayout>;
+    }
+    return mobileContent;
   }
 
   // ========== DESKTOP LAYOUT ==========
-  return (
+  const desktopContent = (
     <div className="space-y-6 overflow-hidden max-w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -745,6 +738,12 @@ const ProductCategories = () => {
       </Modal>
     </div>
   );
+
+  // Wrap with BusinessPanelLayout for admin users
+  if (isAdmin) {
+    return <BusinessPanelLayout>{desktopContent}</BusinessPanelLayout>;
+  }
+  return desktopContent;
 };
 
 export default ProductCategories;

@@ -12,7 +12,7 @@ import {
   HiOutlineRefresh,
   HiOutlineChevronRight,
 } from 'react-icons/hi';
-import { Package, Edit2, Trash2, Upload, Check, DollarSign, AlertTriangle, Boxes, ArrowRight, Search } from 'lucide-react';
+import { Package, Edit2, Trash2, Upload, Check, DollarSign, AlertTriangle, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, Button, Input, Badge, Table, Modal, Toggle } from '../../components/ui';
 import { getMyBusiness } from '../../services/api';
@@ -61,7 +61,7 @@ const ProductCard = ({ product, onEdit, onToggleAvailability, onDelete, getCateg
             onClick={() => onToggleAvailability(product)}
             className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
               product.isAvailable !== false
-                ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400'
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400'
                 : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400'
             }`}
           >

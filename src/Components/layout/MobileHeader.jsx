@@ -1,6 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { HiArrowLeft, HiBell, HiMenu } from 'react-icons/hi';
-import { useAuth } from '../../context/AuthContext';
 
 // Page titles mapping
 const pageTitles = {
@@ -33,7 +32,6 @@ const MobileHeader = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
 
   // Get title from props or from path mapping
   const pageTitle = title || pageTitles[location.pathname] || 'JoyMap';

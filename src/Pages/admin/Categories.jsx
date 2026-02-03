@@ -505,7 +505,7 @@ const Categories = () => {
                     onClick={() => setActiveTab(tab.key)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
                       isActive
-                        ? 'bg-indigo-500 text-white shadow-md'
+                        ? 'bg-indigo-600 text-white shadow-md'
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                     }`}
                   >
@@ -551,7 +551,7 @@ const Categories = () => {
               {!searchQuery && activeTab === 'all' && (
                 <button
                   onClick={openCreateModal}
-                  className="mt-4 px-4 py-2 bg-indigo-500 text-white rounded-xl text-sm font-medium"
+                  className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium"
                 >
                   Crear primera categoria
                 </button>
@@ -573,7 +573,7 @@ const Categories = () => {
         {/* FAB */}
         <button
           onClick={openCreateModal}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-500 text-white rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform z-50"
+          className="fixed bottom-24 right-4 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform z-50"
         >
           <Plus size={24} />
         </button>

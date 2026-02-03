@@ -24,7 +24,7 @@ import { Card, Button, Input, Toggle } from '../../../components/ui';
 import { useAuth } from '../../../context/AuthContext';
 import { useBusiness } from '../../../context/BusinessContext';
 import { updateBusiness, getBusinessById } from '../../../services/api';
-import NoBusinessSelected from '../../../Components/Dashboard/NoBusinessSelected';
+import { BusinessPanelLayout } from '../../../Components/layout';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 
 const DAYS_OF_WEEK = [
@@ -154,15 +154,9 @@ const BusinessProfile = () => {
     loadBusinessData();
   }, [selectedBusiness]);
 
-  // Guard: No business selected
+  // Guard: No business selected - handled by BusinessPanelLayout for admins
   if (isAdmin && !selectedBusiness && !businessLoading) {
-    return (
-      <NoBusinessSelected
-        icon={Store}
-        title="Selecciona un negocio"
-        message="Para editar el perfil del negocio, primero selecciona uno desde el selector en la barra superior."
-      />
-    );
+    return <BusinessPanelLayout>{null}</BusinessPanelLayout>;
   }
 
   // Loading state
@@ -309,25 +303,8 @@ const BusinessProfile = () => {
 
   // ========== MOBILE LAYOUT ==========
   if (isMobile) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        {/* Sticky Header */}
-        <div className="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow-sm">
-          <div className="px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-                  Perfil del Negocio
-                </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {selectedBusiness?.name}
-                </p>
-              </div>
-              <div className={`w-3 h-3 rounded-full ${formData.isOpen ? 'bg-emerald-500' : 'bg-gray-400'}`} />
-            </div>
-          </div>
-        </div>
-
+    const mobileContent = (
+      <div className="bg-gray-50 dark:bg-gray-900">
         {/* Success/Error messages */}
         {(success || error) && (
           <div className="px-4 pt-4">
@@ -568,7 +545,7 @@ const BusinessProfile = () => {
         </div>
 
         {/* Sticky Save Button */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50">
+        <div className="fixed bottom-16 left-0 right-0 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-40">
           <button
             onClick={handleSubmit}
             disabled={saving}
@@ -589,10 +566,16 @@ const BusinessProfile = () => {
         </div>
       </div>
     );
+
+    // Wrap with BusinessPanelLayout for admin users
+    if (isAdmin) {
+      return <BusinessPanelLayout>{mobileContent}</BusinessPanelLayout>;
+    }
+    return mobileContent;
   }
 
   // ========== DESKTOP LAYOUT ==========
-  return (
+  const desktopContent = (
     <div className="space-y-6 overflow-hidden max-w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1016,6 +999,12 @@ const BusinessProfile = () => {
       </div>
     </div>
   );
+
+  // Wrap with BusinessPanelLayout for admin users
+  if (isAdmin) {
+    return <BusinessPanelLayout>{desktopContent}</BusinessPanelLayout>;
+  }
+  return desktopContent;
 };
 
 export default BusinessProfile;

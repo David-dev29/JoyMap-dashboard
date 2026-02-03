@@ -23,6 +23,8 @@ import AdminDiscounts from './pages/admin/Discounts';
 import AdminReviews from './pages/admin/Reviews';
 import AdminSalesHistory from './pages/admin/SalesHistory';
 import AdminMenu from './pages/admin/Menu';
+import AdminActivity from './pages/admin/Activity';
+import AdminConfig from './pages/admin/Config';
 
 // Admin Business Management Pages
 import AdminBusinessProfile from './pages/admin/business/BusinessProfile';
@@ -145,6 +147,14 @@ const router = createBrowserRouter([
       {
         path: 'admin/menu',
         element: <AdminMenu />,
+      },
+      {
+        path: 'admin/activity',
+        element: <AdminActivity />,
+      },
+      {
+        path: 'admin/config',
+        element: <AdminConfig />,
       },
 
       // ============================================

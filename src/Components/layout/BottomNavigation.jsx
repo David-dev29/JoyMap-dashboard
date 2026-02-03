@@ -5,13 +5,15 @@ import {
   HiShoppingBag,
   HiChartBar,
   HiMenu,
+  HiCog,
   HiOutlineHome,
   HiOutlineClipboardList,
   HiOutlineShoppingBag,
   HiOutlineChartBar,
   HiOutlineMenu,
-  HiUsers,
-  HiOutlineUsers,
+  HiOutlineCog,
+  HiOfficeBuilding,
+  HiOutlineOfficeBuilding,
 } from 'react-icons/hi';
 import { useAuth } from '../../context/AuthContext';
 
@@ -72,24 +74,24 @@ const BottomNavigation = () => {
     },
     {
       id: 'businesses',
-      icon: HiOutlineShoppingBag,
-      activeIcon: HiShoppingBag,
+      icon: HiOutlineOfficeBuilding,
+      activeIcon: HiOfficeBuilding,
       label: 'Negocios',
       path: '/admin/businesses'
     },
     {
-      id: 'users',
-      icon: HiOutlineUsers,
-      activeIcon: HiUsers,
-      label: 'Usuarios',
-      path: '/admin/users'
-    },
-    {
-      id: 'stats',
+      id: 'activity',
       icon: HiOutlineChartBar,
       activeIcon: HiChartBar,
-      label: 'Reportes',
-      path: '/admin/reports'
+      label: 'Actividad',
+      path: '/admin/activity'
+    },
+    {
+      id: 'config',
+      icon: HiOutlineCog,
+      activeIcon: HiCog,
+      label: 'Config',
+      path: '/admin/config'
     },
     {
       id: 'menu',
@@ -102,11 +104,48 @@ const BottomNavigation = () => {
 
   const tabs = isAdmin ? adminTabs : businessTabs;
 
-  const isActive = (path) => {
-    if (path === '/' || path === '/admin') {
-      return location.pathname === path;
+  const isActive = (tabId) => {
+    const path = location.pathname;
+
+    if (isAdmin) {
+      switch (tabId) {
+        case 'home':
+          return path === '/admin';
+        case 'businesses':
+          // Includes /admin/businesses and /admin/business/*
+          return path === '/admin/businesses' || path.startsWith('/admin/business');
+        case 'activity':
+          return path.startsWith('/admin/activity');
+        case 'config':
+          // Includes /admin/config, /admin/users, /admin/customers, /admin/categories, /admin/marketing/*
+          return path.startsWith('/admin/config') ||
+                 path.startsWith('/admin/users') ||
+                 path.startsWith('/admin/customers') ||
+                 path.startsWith('/admin/categories') ||
+                 path.startsWith('/admin/marketing') ||
+                 path.startsWith('/admin/settings');
+        case 'menu':
+          return path.startsWith('/admin/menu');
+        default:
+          return false;
+      }
+    } else {
+      // Business owner paths
+      switch (tabId) {
+        case 'home':
+          return path === '/';
+        case 'orders':
+          return path.startsWith('/orders') || path.startsWith('/kitchen');
+        case 'products':
+          return path.startsWith('/products') || path.startsWith('/product-categories');
+        case 'sales':
+          return path.startsWith('/sales');
+        case 'menu':
+          return path.startsWith('/menu');
+        default:
+          return false;
+      }
     }
-    return location.pathname.startsWith(path);
   };
 
   return (
@@ -120,7 +159,7 @@ const BottomNavigation = () => {
     ">
       <div className="flex items-center justify-around h-16 px-2">
         {tabs.map((tab) => {
-          const active = isActive(tab.path);
+          const active = isActive(tab.id);
           const Icon = active ? tab.activeIcon : tab.icon;
 
           return (

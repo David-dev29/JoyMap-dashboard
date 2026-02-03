@@ -136,7 +136,7 @@ const MobileDiscountCard = ({ discount, onEdit, onDelete, onCopy, copiedCode, ge
             {discount.maxUses && (
               <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full">
                 <div
-                  className="h-1.5 bg-indigo-500 rounded-full"
+                  className="h-1.5 bg-indigo-600 rounded-full"
                   style={{ width: `${Math.min(((discount.usedCount || 0) / discount.maxUses) * 100, 100)}%` }}
                 />
               </div>
@@ -608,7 +608,7 @@ const Discounts = () => {
                     onClick={() => setActiveTab(tab.key)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
                       isActive
-                        ? 'bg-indigo-500 text-white shadow-md'
+                        ? 'bg-indigo-600 text-white shadow-md'
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                     }`}
                   >
@@ -668,7 +668,7 @@ const Discounts = () => {
         {/* FAB */}
         <button
           onClick={openCreateModal}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-500 text-white rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform z-50"
+          className="fixed bottom-24 right-4 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform z-50"
         >
           <Plus size={24} />
         </button>
@@ -870,7 +870,7 @@ const Discounts = () => {
                     {discount.maxUses && (
                       <div className="w-20 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full mt-1">
                         <div
-                          className="h-1.5 bg-indigo-500 rounded-full"
+                          className="h-1.5 bg-indigo-600 rounded-full"
                           style={{ width: `${Math.min(((discount.usedCount || 0) / discount.maxUses) * 100, 100)}%` }}
                         />
                       </div>

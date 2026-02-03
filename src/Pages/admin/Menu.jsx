@@ -3,20 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import {
   HiOutlineOfficeBuilding,
   HiOutlineTag,
-  HiOutlineTicket,
-  HiOutlineCog,
   HiOutlineLogout,
-  HiOutlineCollection,
   HiOutlineMoon,
   HiOutlineSun,
   HiChevronRight,
   HiOutlineUsers,
-  HiOutlineShoppingCart,
-  HiOutlineClipboardList,
   HiOutlineStar,
-  HiOutlineChartBar,
-  HiOutlineCube,
   HiOutlineCheck,
+  HiOutlineSwitchHorizontal,
+  HiOutlineExternalLink,
 } from 'react-icons/hi';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -32,114 +27,47 @@ const AdminMenu = () => {
   const [showBusinessSelector, setShowBusinessSelector] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  // Sections that require a selected business
-  const businessSection = selectedBusiness ? {
-    title: 'Negocio Seleccionado',
+  // Marketing section
+  const marketingSection = {
+    title: 'Marketing',
     items: [
       {
-        id: 'business-profile',
-        icon: HiOutlineOfficeBuilding,
-        label: 'Perfil del negocio',
-        description: selectedBusiness.name,
-        path: '/admin/business/profile',
+        id: 'discounts',
+        icon: HiOutlineTag,
+        label: 'Descuentos Globales',
+        description: 'Promociones de plataforma',
+        path: '/admin/marketing/discounts',
       },
       {
-        id: 'business-products',
-        icon: HiOutlineCube,
-        label: 'Productos',
-        description: 'Gestionar productos',
-        path: '/admin/business/products',
-      },
-      {
-        id: 'business-categories',
-        icon: HiOutlineCollection,
-        label: 'Categorias de productos',
-        description: 'Organizar menu',
-        path: '/admin/business/product-categories',
-      },
-      {
-        id: 'business-orders',
-        icon: HiOutlineClipboardList,
-        label: 'Pedidos',
-        description: 'Ver pedidos del negocio',
-        path: '/admin/business/orders',
-      },
-      {
-        id: 'business-coupons',
-        icon: HiOutlineTicket,
-        label: 'Cupones',
-        description: 'Cupones del negocio',
-        path: '/admin/business/coupons',
+        id: 'reviews',
+        icon: HiOutlineStar,
+        label: 'Resenas',
+        description: 'Opiniones de clientes',
+        path: '/admin/marketing/reviews',
       },
     ],
-  } : null;
+  };
 
-  const menuSections = [
-    {
-      title: 'Plataforma',
-      items: [
-        {
-          id: 'categories',
-          icon: HiOutlineCollection,
-          label: 'Categorias de negocios',
-          description: 'Tipos de negocios',
-          path: '/admin/categories',
-        },
-        {
-          id: 'customers',
-          icon: HiOutlineUsers,
-          label: 'Clientes',
-          description: 'Usuarios de la plataforma',
-          path: '/admin/customers',
-        },
-        {
-          id: 'sales-history',
-          icon: HiOutlineShoppingCart,
-          label: 'Historial de ventas',
-          description: 'Todas las ordenes',
-          path: '/admin/sales/history',
-        },
-      ],
-    },
-    {
-      title: 'Marketing',
-      items: [
-        {
-          id: 'discounts',
-          icon: HiOutlineTag,
-          label: 'Descuentos globales',
-          description: 'Promociones de plataforma',
-          path: '/admin/marketing/discounts',
-        },
-        {
-          id: 'reviews',
-          icon: HiOutlineStar,
-          label: 'Resenas',
-          description: 'Opiniones de clientes',
-          path: '/admin/marketing/reviews',
-        },
-      ],
-    },
-    {
-      title: 'Configuracion',
-      items: [
-        {
-          id: 'settings',
-          icon: HiOutlineCog,
-          label: 'Ajustes de plataforma',
-          description: 'Configuracion general',
-          path: '/admin/settings',
-        },
-        {
-          id: 'theme',
-          icon: theme === 'dark' ? HiOutlineSun : HiOutlineMoon,
-          label: theme === 'dark' ? 'Modo claro' : 'Modo oscuro',
-          description: 'Cambiar apariencia',
-          action: toggleTheme,
-        },
-      ],
-    },
-  ];
+  // More section
+  const moreSection = {
+    title: 'Mas',
+    items: [
+      {
+        id: 'customers',
+        icon: HiOutlineUsers,
+        label: 'Clientes',
+        description: 'Usuarios de la plataforma',
+        path: '/admin/customers',
+      },
+      {
+        id: 'theme',
+        icon: theme === 'dark' ? HiOutlineSun : HiOutlineMoon,
+        label: theme === 'dark' ? 'Modo claro' : 'Modo oscuro',
+        description: 'Cambiar apariencia',
+        action: toggleTheme,
+      },
+    ],
+  };
 
   const handleItemClick = (item) => {
     if (item.action) {
@@ -157,6 +85,12 @@ const AdminMenu = () => {
   const handleSelectBusiness = (business) => {
     setSelectedBusiness(business);
     setShowBusinessSelector(false);
+  };
+
+  const handleManageBusiness = () => {
+    if (selectedBusiness) {
+      navigate('/admin/business/profile');
+    }
   };
 
   return (
@@ -190,34 +124,56 @@ const AdminMenu = () => {
         <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-1">
           Negocio Activo
         </h3>
-        <button
-          onClick={() => setShowBusinessSelector(true)}
-          className="w-full flex items-center gap-4 p-4 bg-white dark:bg-gray-900 rounded-2xl shadow-card hover:bg-gray-50 dark:hover:bg-gray-800/50 active:bg-gray-100 transition-colors"
-        >
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card overflow-hidden">
           {selectedBusiness ? (
             <>
-              {selectedBusiness.logo ? (
-                <img
-                  src={selectedBusiness.logo.startsWith('http') ? selectedBusiness.logo : `https://${selectedBusiness.logo}`}
-                  alt={selectedBusiness.name}
-                  className="w-12 h-12 rounded-xl object-cover"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                  <HiOutlineOfficeBuilding className="w-6 h-6 text-indigo-600" />
+              {/* Selected business info */}
+              <div className="flex items-center gap-4 p-4">
+                {selectedBusiness.logo ? (
+                  <img
+                    src={selectedBusiness.logo.startsWith('http') ? selectedBusiness.logo : `https://${selectedBusiness.logo}`}
+                    alt={selectedBusiness.name}
+                    className="w-12 h-12 rounded-xl object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                    <HiOutlineOfficeBuilding className="w-6 h-6 text-indigo-600" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    {selectedBusiness.name}
+                  </p>
+                  {selectedBusiness.category?.name && (
+                    <p className="text-xs text-gray-500 truncate">
+                      {selectedBusiness.category.name}
+                    </p>
+                  )}
                 </div>
-              )}
-              <div className="flex-1 text-left min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {selectedBusiness.name}
-                </p>
-                <p className="text-xs text-indigo-600 dark:text-indigo-400">
-                  Toca para cambiar
-                </p>
+              </div>
+              {/* Action buttons */}
+              <div className="flex border-t border-gray-100 dark:border-gray-800">
+                <button
+                  onClick={() => setShowBusinessSelector(true)}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors border-r border-gray-100 dark:border-gray-800"
+                >
+                  <HiOutlineSwitchHorizontal className="w-4 h-4" />
+                  Cambiar
+                </button>
+                <button
+                  onClick={handleManageBusiness}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                >
+                  <HiOutlineExternalLink className="w-4 h-4" />
+                  Gestionar
+                </button>
               </div>
             </>
           ) : (
-            <>
+            <button
+              onClick={() => setShowBusinessSelector(true)}
+              className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+            >
               <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                 <HiOutlineOfficeBuilding className="w-6 h-6 text-gray-400" />
               </div>
@@ -229,86 +185,85 @@ const AdminMenu = () => {
                   Toca para seleccionar
                 </p>
               </div>
-            </>
+              <HiChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+            </button>
           )}
-          <HiChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
-        </button>
+        </div>
       </div>
 
       {/* Menu Sections */}
       <div className="px-4 pb-4 space-y-6">
-        {/* Business Section (only if business selected) */}
-        {businessSection && (
-          <div>
-            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-1">
-              {businessSection.title}
-            </h3>
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card overflow-hidden divide-y divide-gray-100 dark:divide-gray-800">
-              {businessSection.items.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleItemClick(item)}
-                    className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 active:bg-gray-100 dark:active:bg-gray-800 transition-colors text-left"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
-                      <Icon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {item.label}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        {item.description}
-                      </p>
-                    </div>
-                    <HiChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Other Sections */}
-        {menuSections.map((section) => (
-          <div key={section.title}>
-            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-1">
-              {section.title}
-            </h3>
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card overflow-hidden divide-y divide-gray-100 dark:divide-gray-800">
-              {section.items.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleItemClick(item)}
-                    className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 active:bg-gray-100 dark:active:bg-gray-800 transition-colors text-left"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-                      <Icon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {item.label}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        {item.description}
-                      </p>
-                    </div>
-                    {item.path && (
-                      <HiChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-
-        {/* Logout Button */}
+        {/* Marketing Section */}
         <div>
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-1">
+            {marketingSection.title}
+          </h3>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card overflow-hidden divide-y divide-gray-100 dark:divide-gray-800">
+            {marketingSection.items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleItemClick(item)}
+                  className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 active:bg-gray-100 dark:active:bg-gray-800 transition-colors text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {item.label}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {item.description}
+                    </p>
+                  </div>
+                  <HiChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* More Section */}
+        <div>
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-1">
+            {moreSection.title}
+          </h3>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card overflow-hidden divide-y divide-gray-100 dark:divide-gray-800">
+            {moreSection.items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleItemClick(item)}
+                  className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 active:bg-gray-100 dark:active:bg-gray-800 transition-colors text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {item.label}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {item.description}
+                    </p>
+                  </div>
+                  {item.path && (
+                    <HiChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Session Section */}
+        <div>
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-1">
+            Sesion
+          </h3>
           <button
             onClick={() => setShowLogoutConfirm(true)}
             className="w-full flex items-center gap-4 p-4 bg-white dark:bg-gray-900 rounded-2xl shadow-card hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 transition-colors"

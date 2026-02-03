@@ -451,7 +451,7 @@ const Customers = () => {
                     onClick={() => setSortBy(option.value)}
                     className={`px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
                       isActive
-                        ? 'bg-indigo-500 text-white shadow-md'
+                        ? 'bg-indigo-600 text-white shadow-md'
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                     }`}
                   >

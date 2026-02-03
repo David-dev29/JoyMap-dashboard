@@ -35,10 +35,12 @@ import {
   HiOutlineLocationMarker,
   HiOutlineStar,
   HiOutlineOfficeBuilding,
+  HiChevronRight,
 } from 'react-icons/hi';
 import { Card, Button, Input, Select, Badge, Table, Modal, Avatar, Dropdown } from '../../components/ui';
 import MobileModal from '../../components/ui/MobileModal';
 import { authFetch, ENDPOINTS } from '../../config/api';
+import { useBusiness } from '../../context/BusinessContext';
 
 // Custom hook for detecting mobile
 const useIsMobile = (breakpoint = 768) => {
@@ -83,26 +85,46 @@ const categoryColors = {
   envio: 'info',
 };
 
-// Mobile Business Card
-const MobileBusinessCard = ({ business, onView, onEdit, onAssignOwner, onToggleStatus, onDelete, getBusinessCategory, getBusinessStatus }) => {
+// Mobile Business Card - Redesigned for Phase 2
+// Card tap → selects business and navigates to panel
+// 3-dot menu → opens actions without navigation
+const MobileBusinessCard = ({ business, onCardTap, onEdit, onAssignOwner, onToggleStatus, onDelete, getBusinessCategory, getBusinessStatus }) => {
   const category = getBusinessCategory(business);
   const status = getBusinessStatus(business);
   const [showActions, setShowActions] = useState(false);
   const CategoryIcon = categoryIcons[category] || Store;
 
+  // Handle card tap - select and navigate
+  const handleCardTap = (e) => {
+    // Prevent navigation if clicking the menu button
+    if (e.target.closest('[data-menu-button]')) return;
+    onCardTap(business);
+  };
+
+  // Handle menu button click - prevent propagation and show actions
+  const handleMenuClick = (e) => {
+    e.stopPropagation();
+    setShowActions(!showActions);
+  };
+
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card overflow-hidden">
-      {/* Header with Logo and Status */}
-      <div className="relative p-4 pb-3">
+      {/* Main Tappable Area */}
+      <button
+        onClick={handleCardTap}
+        className="w-full text-left p-4 pb-3 active:bg-gray-50 dark:active:bg-gray-800/50 transition-colors"
+      >
         <div className="flex items-start gap-3">
           {/* Avatar/Logo */}
           <div className="w-14 h-14 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden flex-shrink-0">
             {business.logo ? (
-              <img src={business.logo} alt={business.name} className="w-full h-full object-cover" />
+              <img src={business.logo.startsWith('http') ? business.logo : `https://${business.logo}`} alt={business.name} className="w-full h-full object-cover" />
+            ) : business.mapIcon ? (
+              <div dangerouslySetInnerHTML={{ __html: business.mapIcon }} className="w-8 h-8" />
             ) : business.emoji ? (
               <span className="text-2xl">{business.emoji}</span>
             ) : (
-              <HiOutlineOfficeBuilding className="w-7 h-7 text-gray-400" />
+              <span className="text-xl font-bold text-indigo-600">{business.name?.charAt(0)?.toUpperCase()}</span>
             )}
           </div>
 
@@ -111,7 +133,8 @@ const MobileBusinessCard = ({ business, onView, onEdit, onAssignOwner, onToggleS
             <h3 className="font-semibold text-gray-900 dark:text-white truncate">
               {business.name}
             </h3>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {/* Category Badge */}
               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                 category === 'food' || category === 'comida'
                   ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
@@ -122,62 +145,52 @@ const MobileBusinessCard = ({ business, onView, onEdit, onAssignOwner, onToggleS
                 <CategoryIcon size={12} />
                 {categoryLabels[category] || business.category?.name || 'Otro'}
               </span>
+              {/* Status Badge */}
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                 status === 'active'
-                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                   : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
               }`}>
                 {status === 'active' ? 'Activo' : 'Inactivo'}
               </span>
             </div>
-          </div>
 
-          {/* Actions Menu */}
-          <button
-            onClick={() => setShowActions(!showActions)}
-            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-          >
-            <HiOutlineDotsVertical className="w-5 h-5 text-gray-400" />
-          </button>
-        </div>
-
-        {/* Owner Info */}
-        {business.owner ? (
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
-            <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-xs font-medium text-indigo-600">
-              {business.owner.name?.charAt(0) || 'O'}
+            {/* Owner Info */}
+            <div className="flex items-center gap-2 mt-2">
+              {business.owner ? (
+                <>
+                  <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-[10px] font-medium text-indigo-600">
+                    {business.owner.name?.charAt(0) || 'O'}
+                  </div>
+                  <span className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                    {business.owner.name}
+                  </span>
+                </>
+              ) : (
+                <span className="text-xs text-gray-400 italic">Sin owner</span>
+              )}
             </div>
-            <span className="text-xs text-gray-600 dark:text-gray-400 truncate">
-              {business.owner.name}
-            </span>
           </div>
-        ) : (
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
-            <span className="text-xs text-gray-400 italic">Sin owner asignado</span>
-          </div>
-        )}
 
-        {/* Address */}
-        {business.address && (
-          <div className="flex items-start gap-1.5 mt-2">
-            <HiOutlineLocationMarker className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
-            <span className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
-              {business.address}
-            </span>
+          {/* Right side: Menu button and Chevron */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* Actions Menu Button */}
+            <button
+              data-menu-button
+              onClick={handleMenuClick}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              <HiOutlineDotsVertical className="w-5 h-5 text-gray-400" />
+            </button>
+            {/* Chevron indicator */}
+            <HiChevronRight className="w-5 h-5 text-gray-300 dark:text-gray-600" />
           </div>
-        )}
-      </div>
+        </div>
+      </button>
 
-      {/* Actions Drawer */}
+      {/* Actions Drawer - Only shows when menu is open */}
       {showActions && (
         <div className="border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-2 grid grid-cols-4 gap-1">
-          <button
-            onClick={() => { setShowActions(false); onView(business); }}
-            className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-colors"
-          >
-            <HiOutlineEye className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-            <span className="text-xs text-gray-600 dark:text-gray-400">Ver</span>
-          </button>
           <button
             onClick={() => { setShowActions(false); onEdit(business); }}
             className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-colors"
@@ -191,6 +204,15 @@ const MobileBusinessCard = ({ business, onView, onEdit, onAssignOwner, onToggleS
           >
             <HiOutlineUserAdd className="w-5 h-5 text-purple-600" />
             <span className="text-xs text-purple-600">Owner</span>
+          </button>
+          <button
+            onClick={() => { setShowActions(false); onToggleStatus(business); }}
+            className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-colors"
+          >
+            <Power size={18} className={status === 'active' ? 'text-amber-500' : 'text-emerald-500'} />
+            <span className={`text-xs ${status === 'active' ? 'text-amber-500' : 'text-emerald-500'}`}>
+              {status === 'active' ? 'Pausar' : 'Activar'}
+            </span>
           </button>
           <button
             onClick={() => { setShowActions(false); onDelete(business); }}
@@ -208,6 +230,7 @@ const MobileBusinessCard = ({ business, onView, onEdit, onAssignOwner, onToggleS
 const Businesses = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { setSelectedBusiness } = useBusiness();
 
   // State
   const [businesses, setBusinesses] = useState([]);
@@ -223,7 +246,7 @@ const Businesses = () => {
   const [isAssignOwnerModalOpen, setIsAssignOwnerModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedBusiness, setSelectedBusiness] = useState(null);
+  const [modalBusiness, setModalBusiness] = useState(null);
   const [availableOwners, setAvailableOwners] = useState([]);
 
   // Form state
@@ -515,7 +538,7 @@ const Businesses = () => {
         requestBody.iconSvg = null;
       }
 
-      const response = await authFetch(ENDPOINTS.businesses.byId(selectedBusiness._id), {
+      const response = await authFetch(ENDPOINTS.businesses.byId(modalBusiness._id), {
         method: 'PUT',
         body: JSON.stringify(requestBody),
       });
@@ -526,7 +549,7 @@ const Businesses = () => {
         showToast('Negocio actualizado exitosamente');
         await fetchBusinesses();
         setIsEditModalOpen(false);
-        setSelectedBusiness(null);
+        setModalBusiness(null);
         resetForm();
       } else {
         throw new Error(data.message || 'Error al actualizar negocio');
@@ -540,11 +563,11 @@ const Businesses = () => {
   };
 
   const handleDeleteBusiness = async () => {
-    if (!selectedBusiness) return;
+    if (!modalBusiness) return;
 
     setSubmitting(true);
     try {
-      const response = await authFetch(ENDPOINTS.businesses.byId(selectedBusiness._id), {
+      const response = await authFetch(ENDPOINTS.businesses.byId(modalBusiness._id), {
         method: 'DELETE',
       });
 
@@ -554,7 +577,7 @@ const Businesses = () => {
         showToast('Negocio eliminado exitosamente');
         await fetchBusinesses();
         setIsDeleteModalOpen(false);
-        setSelectedBusiness(null);
+        setModalBusiness(null);
       } else {
         throw new Error(data.message || 'Error al eliminar negocio');
       }
@@ -572,7 +595,7 @@ const Businesses = () => {
       const response = await authFetch(ENDPOINTS.admin.assignBusiness, {
         method: 'POST',
         body: JSON.stringify({
-          businessId: selectedBusiness._id,
+          businessId: modalBusiness._id,
           userId: ownerId,
         }),
       });
@@ -583,7 +606,7 @@ const Businesses = () => {
         showToast('Owner asignado exitosamente');
         await fetchBusinesses();
         setIsAssignOwnerModalOpen(false);
-        setSelectedBusiness(null);
+        setModalBusiness(null);
       } else {
         throw new Error(data.message || 'Error al asignar owner');
       }
@@ -633,7 +656,7 @@ const Businesses = () => {
   };
 
   const openEditModal = (business) => {
-    setSelectedBusiness(business);
+    setModalBusiness(business);
 
     let coords = [];
     if (business.coordinates && Array.isArray(business.coordinates)) {
@@ -671,19 +694,25 @@ const Businesses = () => {
   };
 
   const openAssignOwnerModal = (business) => {
-    setSelectedBusiness(business);
+    setModalBusiness(business);
     fetchAvailableOwners();
     setIsAssignOwnerModalOpen(true);
   };
 
   const openViewModal = (business) => {
-    setSelectedBusiness(business);
+    setModalBusiness(business);
     setIsViewModalOpen(true);
   };
 
   const openDeleteModal = (business) => {
-    setSelectedBusiness(business);
+    setModalBusiness(business);
     setIsDeleteModalOpen(true);
+  };
+
+  // Handle card tap - select business and navigate to panel
+  const handleCardTap = (business) => {
+    setSelectedBusiness(business);
+    navigate('/admin/business/profile');
   };
 
   const CategoryIcon = ({ category }) => {
@@ -803,7 +832,7 @@ const Businesses = () => {
                 <MobileBusinessCard
                   key={business._id}
                   business={business}
-                  onView={openViewModal}
+                  onCardTap={handleCardTap}
                   onEdit={openEditModal}
                   onAssignOwner={openAssignOwnerModal}
                   onToggleStatus={handleToggleStatus}
@@ -1011,7 +1040,7 @@ const Businesses = () => {
           size="sm"
         >
           <p className="text-gray-600 dark:text-gray-300 text-center py-4">
-            ¿Estas seguro de eliminar <strong>{selectedBusiness?.name}</strong>?
+            ¿Estas seguro de eliminar <strong>{modalBusiness?.name}</strong>?
             <br />
             <span className="text-sm text-gray-500">Esta accion no se puede deshacer.</span>
           </p>
@@ -1037,7 +1066,7 @@ const Businesses = () => {
           isOpen={isAssignOwnerModalOpen}
           onClose={() => setIsAssignOwnerModalOpen(false)}
           title="Asignar Owner"
-          description={selectedBusiness?.name}
+          description={modalBusiness?.name}
           size="md"
         >
           <div className="space-y-2">
@@ -1076,64 +1105,64 @@ const Businesses = () => {
           title="Detalles del Negocio"
           size="lg"
         >
-          {selectedBusiness && (
+          {modalBusiness && (
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
-                  {selectedBusiness.logo ? (
-                    <img src={selectedBusiness.logo} alt={selectedBusiness.name} className="w-full h-full object-cover" />
-                  ) : selectedBusiness.emoji ? (
-                    <span className="text-3xl">{selectedBusiness.emoji}</span>
+                  {modalBusiness.logo ? (
+                    <img src={modalBusiness.logo} alt={modalBusiness.name} className="w-full h-full object-cover" />
+                  ) : modalBusiness.emoji ? (
+                    <span className="text-3xl">{modalBusiness.emoji}</span>
                   ) : (
                     <HiOutlineOfficeBuilding className="w-8 h-8 text-gray-400" />
                   )}
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {selectedBusiness.name}
+                    {modalBusiness.name}
                   </h3>
                   <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                    getBusinessStatus(selectedBusiness) === 'active'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    getBusinessStatus(modalBusiness) === 'active'
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                       : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
                   }`}>
-                    {getBusinessStatus(selectedBusiness) === 'active' ? 'Activo' : 'Inactivo'}
+                    {getBusinessStatus(modalBusiness) === 'active' ? 'Activo' : 'Inactivo'}
                   </span>
                 </div>
               </div>
 
               <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-                {selectedBusiness.description && (
+                {modalBusiness.description && (
                   <div>
                     <label className="text-xs text-gray-500 dark:text-gray-400">Descripcion</label>
-                    <p className="text-gray-900 dark:text-white">{selectedBusiness.description}</p>
+                    <p className="text-gray-900 dark:text-white">{modalBusiness.description}</p>
                   </div>
                 )}
-                {selectedBusiness.address && (
+                {modalBusiness.address && (
                   <div>
                     <label className="text-xs text-gray-500 dark:text-gray-400">Direccion</label>
                     <p className="text-gray-900 dark:text-white flex items-start gap-2">
                       <MapPin size={16} className="text-gray-400 mt-0.5" />
-                      {selectedBusiness.address}
+                      {modalBusiness.address}
                     </p>
                   </div>
                 )}
-                {selectedBusiness.phone && (
+                {modalBusiness.phone && (
                   <div>
                     <label className="text-xs text-gray-500 dark:text-gray-400">Telefono</label>
-                    <p className="text-gray-900 dark:text-white">{selectedBusiness.phone}</p>
+                    <p className="text-gray-900 dark:text-white">{modalBusiness.phone}</p>
                   </div>
                 )}
-                {selectedBusiness.email && (
+                {modalBusiness.email && (
                   <div>
                     <label className="text-xs text-gray-500 dark:text-gray-400">Email</label>
-                    <p className="text-gray-900 dark:text-white">{selectedBusiness.email}</p>
+                    <p className="text-gray-900 dark:text-white">{modalBusiness.email}</p>
                   </div>
                 )}
                 <div>
                   <label className="text-xs text-gray-500 dark:text-gray-400">Owner Asignado</label>
                   <p className="text-gray-900 dark:text-white">
-                    {selectedBusiness.owner?.name || 'Sin asignar'}
+                    {modalBusiness.owner?.name || 'Sin asignar'}
                   </p>
                 </div>
               </div>
@@ -1149,7 +1178,7 @@ const Businesses = () => {
             <button
               onClick={() => {
                 setIsViewModalOpen(false);
-                openEditModal(selectedBusiness);
+                openEditModal(modalBusiness);
               }}
               className="flex-1 px-4 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700"
             >
@@ -1529,18 +1558,18 @@ const Businesses = () => {
         isOpen={isDeleteModalOpen && !isMobile}
         onClose={() => {
           setIsDeleteModalOpen(false);
-          setSelectedBusiness(null);
+          setModalBusiness(null);
         }}
         title="Eliminar Negocio"
         size="sm"
       >
         <p className="text-gray-600 dark:text-gray-300">
-          ¿Estas seguro de eliminar <strong>{selectedBusiness?.name}</strong>? Esta accion no se puede deshacer.
+          ¿Estas seguro de eliminar <strong>{modalBusiness?.name}</strong>? Esta accion no se puede deshacer.
         </p>
         <Modal.Footer>
           <Button variant="ghost" onClick={() => {
             setIsDeleteModalOpen(false);
-            setSelectedBusiness(null);
+            setModalBusiness(null);
           }}>
             Cancelar
           </Button>
@@ -1555,10 +1584,10 @@ const Businesses = () => {
         isOpen={isAssignOwnerModalOpen && !isMobile}
         onClose={() => {
           setIsAssignOwnerModalOpen(false);
-          setSelectedBusiness(null);
+          setModalBusiness(null);
         }}
         title="Asignar Owner"
-        description={`Selecciona un owner para: ${selectedBusiness?.name}`}
+        description={`Selecciona un owner para: ${modalBusiness?.name}`}
       >
         <div className="space-y-2">
           {availableOwners.length === 0 ? (
@@ -1591,23 +1620,23 @@ const Businesses = () => {
         isOpen={isViewModalOpen && !isMobile}
         onClose={() => {
           setIsViewModalOpen(false);
-          setSelectedBusiness(null);
+          setModalBusiness(null);
         }}
         title="Detalles del Negocio"
         size="lg"
       >
-        {selectedBusiness && (
+        {modalBusiness && (
           <div className="space-y-6">
             <div className="flex items-center gap-4">
-              <Avatar name={selectedBusiness.name} size="xl" src={selectedBusiness.logo} />
+              <Avatar name={modalBusiness.name} size="xl" src={modalBusiness.logo} />
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  {selectedBusiness.name}
+                  {modalBusiness.name}
                 </h3>
-                <Badge variant={categoryColors[getBusinessCategory(selectedBusiness)] || 'secondary'} className="mt-1">
+                <Badge variant={categoryColors[getBusinessCategory(modalBusiness)] || 'secondary'} className="mt-1">
                   <span className="flex items-center gap-1.5">
-                    <CategoryIcon category={getBusinessCategory(selectedBusiness)} />
-                    {categoryLabels[getBusinessCategory(selectedBusiness)] || selectedBusiness.category?.name}
+                    <CategoryIcon category={getBusinessCategory(modalBusiness)} />
+                    {categoryLabels[getBusinessCategory(modalBusiness)] || modalBusiness.category?.name}
                   </span>
                 </Badge>
               </div>
@@ -1618,41 +1647,41 @@ const Businesses = () => {
                 <label className="text-sm text-gray-500 dark:text-gray-400">Estado</label>
                 <p className="mt-1">
                   <Badge
-                    variant={getBusinessStatus(selectedBusiness) === 'active' ? 'success' : 'default'}
+                    variant={getBusinessStatus(modalBusiness) === 'active' ? 'success' : 'default'}
                     dot
                   >
-                    {getBusinessStatus(selectedBusiness) === 'active' ? 'Activo' : 'Inactivo'}
+                    {getBusinessStatus(modalBusiness) === 'active' ? 'Activo' : 'Inactivo'}
                   </Badge>
                 </p>
               </div>
               <div>
                 <label className="text-sm text-gray-500 dark:text-gray-400">Owner</label>
                 <p className="mt-1 font-medium text-gray-900 dark:text-white">
-                  {selectedBusiness.owner?.name || 'Sin asignar'}
+                  {modalBusiness.owner?.name || 'Sin asignar'}
                 </p>
               </div>
-              {selectedBusiness.description && (
+              {modalBusiness.description && (
                 <div className="col-span-2">
                   <label className="text-sm text-gray-500 dark:text-gray-400">Descripcion</label>
-                  <p className="mt-1 text-gray-900 dark:text-white">{selectedBusiness.description}</p>
+                  <p className="mt-1 text-gray-900 dark:text-white">{modalBusiness.description}</p>
                 </div>
               )}
-              {selectedBusiness.address && (
+              {modalBusiness.address && (
                 <div className="col-span-2">
                   <label className="text-sm text-gray-500 dark:text-gray-400">Direccion</label>
-                  <p className="mt-1 text-gray-900 dark:text-white">{selectedBusiness.address}</p>
+                  <p className="mt-1 text-gray-900 dark:text-white">{modalBusiness.address}</p>
                 </div>
               )}
-              {selectedBusiness.phone && (
+              {modalBusiness.phone && (
                 <div>
                   <label className="text-sm text-gray-500 dark:text-gray-400">Telefono</label>
-                  <p className="mt-1 text-gray-900 dark:text-white">{selectedBusiness.phone}</p>
+                  <p className="mt-1 text-gray-900 dark:text-white">{modalBusiness.phone}</p>
                 </div>
               )}
-              {selectedBusiness.email && (
+              {modalBusiness.email && (
                 <div>
                   <label className="text-sm text-gray-500 dark:text-gray-400">Email</label>
-                  <p className="mt-1 text-gray-900 dark:text-white">{selectedBusiness.email}</p>
+                  <p className="mt-1 text-gray-900 dark:text-white">{modalBusiness.email}</p>
                 </div>
               )}
             </div>
@@ -1661,13 +1690,13 @@ const Businesses = () => {
         <Modal.Footer>
           <Button variant="ghost" onClick={() => {
             setIsViewModalOpen(false);
-            setSelectedBusiness(null);
+            setModalBusiness(null);
           }}>
             Cerrar
           </Button>
           <Button onClick={() => {
             setIsViewModalOpen(false);
-            openEditModal(selectedBusiness);
+            openEditModal(modalBusiness);
           }}>
             Editar
           </Button>

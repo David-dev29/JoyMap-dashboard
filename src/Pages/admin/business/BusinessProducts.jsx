@@ -25,7 +25,7 @@ import {
   deleteProduct,
 } from '../../../services/api';
 import { authFetch, ENDPOINTS } from '../../../config/api';
-import NoBusinessSelected from '../../../Components/Dashboard/NoBusinessSelected';
+import { BusinessPanelLayout } from '../../../Components/layout';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 
 const availabilityOptions = [
@@ -117,15 +117,9 @@ const BusinessProducts = () => {
     loadProducts();
   }, [selectedBusiness]);
 
-  // Guard: No business selected
+  // Guard: No business selected - handled by BusinessPanelLayout for admins
   if (isAdmin && !selectedBusiness && !businessLoading) {
-    return (
-      <NoBusinessSelected
-        icon={Package}
-        title="Selecciona un negocio"
-        message="Para gestionar los productos, primero selecciona un negocio desde el selector en la barra superior."
-      />
-    );
+    return <BusinessPanelLayout>{null}</BusinessPanelLayout>;
   }
 
   // Loading state
@@ -420,19 +414,14 @@ const BusinessProducts = () => {
 
   // ========== MOBILE LAYOUT ==========
   if (isMobile) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        {/* Sticky Header */}
-        <div className="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow-sm">
-          <div className="px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-lg font-bold text-gray-900 dark:text-white">Productos</h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {filteredProducts.length} de {products.length}
-                </p>
-              </div>
-            </div>
+    const mobileContent = (
+      <div className="bg-gray-50 dark:bg-gray-900 min-h-full">
+        {/* Search bar */}
+        <div className="sticky top-0 z-30 bg-white dark:bg-gray-800 shadow-sm px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {filteredProducts.length} de {products.length} productos
+            </p>
           </div>
 
           {/* Search bar */}
@@ -499,7 +488,7 @@ const BusinessProducts = () => {
         {/* FAB */}
         <button
           onClick={openCreateModal}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center z-50"
+          className="fixed bottom-24 right-4 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center z-50"
         >
           <Plus size={24} />
         </button>
@@ -616,10 +605,16 @@ const BusinessProducts = () => {
         </MobileModal>
       </div>
     );
+
+    // Wrap with BusinessPanelLayout for admin users
+    if (isAdmin) {
+      return <BusinessPanelLayout>{mobileContent}</BusinessPanelLayout>;
+    }
+    return mobileContent;
   }
 
   // ========== DESKTOP LAYOUT ==========
-  return (
+  const desktopContent = (
     <div className="space-y-6 overflow-hidden max-w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -917,6 +912,12 @@ const BusinessProducts = () => {
       </Modal>
     </div>
   );
+
+  // Wrap with BusinessPanelLayout for admin users
+  if (isAdmin) {
+    return <BusinessPanelLayout>{desktopContent}</BusinessPanelLayout>;
+  }
+  return desktopContent;
 };
 
 export default BusinessProducts;

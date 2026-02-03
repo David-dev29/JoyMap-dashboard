@@ -23,10 +23,9 @@ import {
   Volume2,
   VolumeX,
   Wifi,
-  WifiOff,
   MessageSquare,
 } from 'lucide-react';
-import { Card, Button, Badge, Spinner } from '../../components/ui';
+import { Card, Button, Badge } from '../../components/ui';
 import { useBusiness } from '../../context/BusinessContext';
 import { ENDPOINTS, SOCKET_URL, SOCKET_CONFIG, authFetch } from '../../config/api';
 
@@ -104,7 +103,7 @@ const MobileOrderCard = ({ order, onAccept, onReject, onReady, onDelivered, isUp
   const getTimerColor = () => {
     if (timeElapsed.variant === 'danger') return 'text-red-600 bg-red-100 dark:bg-red-900/30';
     if (timeElapsed.variant === 'warning') return 'text-amber-600 bg-amber-100 dark:bg-amber-900/30';
-    return 'text-green-600 bg-green-100 dark:bg-green-900/30';
+    return 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30';
   };
 
   return (
@@ -118,7 +117,7 @@ const MobileOrderCard = ({ order, onAccept, onReject, onReady, onDelivered, isUp
           <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
             orderType.variant === 'info' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30' :
             orderType.variant === 'warning' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30' :
-            'bg-green-100 text-green-700 dark:bg-green-900/30'
+            'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30'
           }`}>
             {orderType.label}
           </span>
@@ -179,7 +178,7 @@ const MobileOrderCard = ({ order, onAccept, onReject, onReady, onDelivered, isUp
             <button
               onClick={() => onAccept(order)}
               disabled={isUpdating}
-              className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-500 text-white font-medium rounded-xl hover:bg-green-600 transition-colors disabled:opacity-50"
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-500 text-white font-medium rounded-xl hover:bg-emerald-600 transition-colors disabled:opacity-50"
             >
               <HiOutlineCheck className="w-5 h-5" />
               Aceptar
@@ -202,7 +201,7 @@ const MobileOrderCard = ({ order, onAccept, onReject, onReady, onDelivered, isUp
           <button
             onClick={() => onDelivered(order)}
             disabled={isUpdating}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-green-500 text-white font-medium rounded-xl hover:bg-green-600 transition-colors disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-500 text-white font-medium rounded-xl hover:bg-emerald-600 transition-colors disabled:opacity-50"
           >
             <HiOutlineCheck className="w-5 h-5" />
             Entregada
@@ -647,7 +646,7 @@ const Kitchen = () => {
                   activeTab === tab.id
                     ? tab.color === 'amber' ? 'bg-amber-500 text-white' :
                       tab.color === 'blue' ? 'bg-blue-500 text-white' :
-                      'bg-green-500 text-white'
+                      'bg-emerald-500 text-white'
                     : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800'
                 }`}
               >
@@ -657,7 +656,7 @@ const Kitchen = () => {
                     ? 'bg-white/20 text-white'
                     : tab.color === 'amber' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30' :
                       tab.color === 'blue' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30' :
-                      'bg-green-100 text-green-700 dark:bg-green-900/30'
+                      'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30'
                 }`}>
                   {stats[tab.id]}
                 </span>

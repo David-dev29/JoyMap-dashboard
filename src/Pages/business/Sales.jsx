@@ -23,7 +23,6 @@ import {
   ArrowDownRight,
   BarChart3,
   CreditCard,
-  Banknote,
   Award,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -57,8 +56,8 @@ const TransactionCard = ({ order, formatDate }) => {
         className="w-full p-4 flex items-center justify-between"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
-            <HiOutlineCurrencyDollar className="w-5 h-5 text-green-600" />
+          <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
+            <HiOutlineCurrencyDollar className="w-5 h-5 text-emerald-600" />
           </div>
           <div className="text-left">
             <p className="text-sm font-medium text-gray-900 dark:text-white">
@@ -71,7 +70,7 @@ const TransactionCard = ({ order, formatDate }) => {
         </div>
         <div className="flex items-center gap-2">
           <div className="text-right">
-            <p className="text-sm font-semibold text-green-600">
+            <p className="text-sm font-semibold text-emerald-600">
               +${order.total?.toLocaleString() || 0}
             </p>
             <p className="text-xs text-gray-500">{formatDate(order.createdAt)}</p>
@@ -108,7 +107,7 @@ const TransactionCard = ({ order, formatDate }) => {
                  order.paymentMethod === 'card' ? 'Tarjeta' :
                  order.paymentMethod === 'transfer' ? 'Transferencia' : 'Otro'}
               </span>
-              <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 text-xs font-medium rounded-full">
+              <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 text-xs font-medium rounded-full">
                 Completada
               </span>
             </div>
@@ -124,7 +123,6 @@ const Sales = () => {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState([]);
   const [dateRange, setDateRange] = useState('week');
-  const [showChart, setShowChart] = useState(true);
 
   useEffect(() => {
     loadOrders();
@@ -362,8 +360,8 @@ const Sales = () => {
             {/* Today */}
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card p-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                  <HiOutlineCurrencyDollar className="w-4 h-4 text-green-600" />
+                <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                  <HiOutlineCurrencyDollar className="w-4 h-4 text-emerald-600" />
                 </div>
                 <span className="text-xs text-gray-500">Hoy</span>
               </div>
@@ -491,7 +489,7 @@ const Sales = () => {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold text-green-600">
+                      <p className="text-sm font-semibold text-emerald-600">
                         ${product.revenue.toLocaleString()}
                       </p>
                       <p className="text-xs text-gray-500">{product.quantity} uds</p>

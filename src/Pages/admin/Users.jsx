@@ -147,7 +147,7 @@ const MobileUserCard = ({ user, onEdit, onAssignBusiness, onDelete }) => {
           {user.role === 'business_owner' && (
             <button
               onClick={() => onAssignBusiness(user)}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-indigo-500 rounded-xl text-sm font-medium text-white shadow-sm"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-indigo-600 rounded-xl text-sm font-medium text-white shadow-sm"
             >
               <Building2 size={16} />
               Negocio
@@ -581,7 +581,7 @@ const Users = () => {
                     onClick={() => setActiveTab(tab.key)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
                       isActive
-                        ? 'bg-indigo-500 text-white shadow-md'
+                        ? 'bg-indigo-600 text-white shadow-md'
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                     }`}
                   >
@@ -644,7 +644,7 @@ const Users = () => {
             resetForm();
             setIsCreateModalOpen(true);
           }}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-500 text-white rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform z-50"
+          className="fixed bottom-24 right-4 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform z-50"
         >
           <Plus size={24} />
         </button>
@@ -783,7 +783,7 @@ const Users = () => {
       {toast.show && (
         <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg ${
           toast.type === 'success'
-            ? 'bg-green-500 text-white'
+            ? 'bg-emerald-500 text-white'
             : 'bg-red-500 text-white'
         }`}>
           {toast.type === 'success' ? <CheckCircle size={20} /> : <XCircle size={20} />}

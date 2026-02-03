@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const Login = () => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -12,7 +14,6 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Redirigir al destino original o al dashboard
   const from = location.state?.from?.pathname || '/';
 
   const handleSubmit = async (e) => {
@@ -20,7 +21,6 @@ const Login = () => {
     setError('');
     setIsLoading(true);
 
-    // Validacion basica
     if (!identifier.trim() || !password.trim()) {
       setError('Por favor, completa todos los campos');
       setIsLoading(false);
@@ -39,71 +39,87 @@ const Login = () => {
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{
-        background: `
-          linear-gradient(135deg, rgba(251, 146, 60, 0.1) 0%, transparent 50%, rgba(139, 92, 246, 0.1) 100%),
-          linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)
-        `,
-      }}
-    >
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-gray-900">
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="flex justify-center mb-8">
-          <div className="text-4xl font-bold text-white">
-            <span className="text-orange-500">Joy</span>Map
-          </div>
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
+            <span className="text-indigo-600">Joy</span>Map
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-2">
+            Panel de Administracion
+          </p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-8">
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Bienvenido</h1>
-            <p className="text-slate-500 mt-2">Ingresa a tu cuenta</p>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Iniciar Sesion
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Ingresa tus credenciales para continuar
+            </p>
           </div>
 
-          {/* Mensaje de Error */}
+          {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+            <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-sm">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Input Email/Phone */}
+            {/* Email Input */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Correo electronico o telefono
               </label>
-              <input
-                type="text"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="ejemplo@correo.com"
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail size={18} className="text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder="ejemplo@correo.com"
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  disabled={isLoading}
+                />
+              </div>
             </div>
 
-            {/* Input Password */}
+            {/* Password Input */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Contrasena
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="********"
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock size={18} className="text-gray-400" />
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="********"
+                  className="w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
-            {/* Link Forgot Password */}
+            {/* Forgot Password Link */}
             <div className="text-right">
-              <a href="#" className="text-sm text-orange-500 hover:text-orange-600">
+              <a href="#" className="text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">
                 Olvidaste tu contrasena?
               </a>
             </div>
@@ -112,10 +128,10 @@ const Login = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {isLoading ? (
-                <span className="flex items-center justify-center">
+                <>
                   <svg
                     className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
                     xmlns="http://www.w3.org/2000/svg"
@@ -137,7 +153,7 @@ const Login = () => {
                     />
                   </svg>
                   Iniciando sesion...
-                </span>
+                </>
               ) : (
                 'Iniciar sesion'
               )}
@@ -146,7 +162,7 @@ const Login = () => {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-slate-400 text-sm mt-6">
+        <p className="text-center text-gray-400 dark:text-gray-500 text-sm mt-6">
           2025 JoyMap. Todos los derechos reservados.
         </p>
       </div>
