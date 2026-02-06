@@ -25,6 +25,7 @@ import AdminSalesHistory from './pages/admin/SalesHistory';
 import AdminMenu from './pages/admin/Menu';
 import AdminActivity from './pages/admin/Activity';
 import AdminConfig from './pages/admin/Config';
+import AdminPromotions from './pages/admin/Promotions';
 
 // Admin Business Management Pages
 import AdminBusinessProfile from './pages/admin/business/BusinessProfile';
@@ -155,6 +156,10 @@ const router = createBrowserRouter([
       {
         path: 'admin/config',
         element: <AdminConfig />,
+      },
+      {
+        path: 'admin/promotions',
+        element: <AdminPromotions />,
       },
 
       // ============================================

@@ -465,7 +465,7 @@ const Businesses = () => {
         requestBody.iconSvg = svgCode.trim();
       } else if (iconType === 'emoji' && selectedEmoji) {
         requestBody.iconType = 'emoji';
-        requestBody.emoji = selectedEmoji;
+        requestBody.mapIcon = selectedEmoji;
       }
 
       const response = await authFetch(ENDPOINTS.businesses.create, {
@@ -531,10 +531,10 @@ const Businesses = () => {
         requestBody.iconSvg = svgCode.trim();
       } else if (iconType === 'emoji' && selectedEmoji) {
         requestBody.iconType = 'emoji';
-        requestBody.emoji = selectedEmoji;
+        requestBody.mapIcon = selectedEmoji;
       } else {
         requestBody.iconType = null;
-        requestBody.emoji = null;
+        requestBody.mapIcon = null;
         requestBody.iconSvg = null;
       }
 

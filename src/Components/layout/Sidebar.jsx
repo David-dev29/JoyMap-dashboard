@@ -21,6 +21,7 @@ import {
   History,
   UserCircle,
   Ticket,
+  Image,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useBusiness } from '../../context/BusinessContext';
@@ -56,6 +57,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { icon: History, label: 'Historial', path: '/admin/sales/history' },
         { icon: BarChart3, label: 'Reportes', path: '/admin/reports' },
         { type: 'label', label: 'MARKETING' },
+        { icon: Image, label: 'Promociones', path: '/admin/promotions' },
         { icon: Percent, label: 'Descuentos', path: '/admin/marketing/discounts' },
         { icon: Star, label: 'Resenas', path: '/admin/marketing/reviews' },
         { type: 'label', label: 'OPERACIONES' },
