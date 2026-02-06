@@ -35,8 +35,6 @@ const Promotions = () => {
     type: 'carousel',
     linkType: 'none',
     linkValue: '',
-    backgroundColor: '#E11D48',
-    textColor: '#FFFFFF',
     isActive: true,
   });
   const [imageFile, setImageFile] = useState(null);
@@ -87,8 +85,6 @@ const Promotions = () => {
         type: promotion.type || 'carousel',
         linkType: promotion.linkType || 'none',
         linkValue: promotion.linkValue || '',
-        backgroundColor: promotion.backgroundColor || '#E11D48',
-        textColor: promotion.textColor || '#FFFFFF',
         isActive: promotion.isActive ?? true,
       });
       setImagePreview(promotion.image);
@@ -100,8 +96,6 @@ const Promotions = () => {
         type: 'carousel',
         linkType: 'none',
         linkValue: '',
-        backgroundColor: '#E11D48',
-        textColor: '#FFFFFF',
         isActive: true,
       });
       setImagePreview(null);
@@ -133,8 +127,6 @@ const Promotions = () => {
       formDataToSend.append('type', formData.type);
       formDataToSend.append('linkType', formData.linkType);
       formDataToSend.append('linkValue', formData.linkValue);
-      formDataToSend.append('backgroundColor', formData.backgroundColor);
-      formDataToSend.append('textColor', formData.textColor);
       formDataToSend.append('isActive', formData.isActive);
 
       if (imageFile) {
@@ -268,10 +260,7 @@ const Promotions = () => {
                 }`}
               >
                 {/* Preview */}
-                <div
-                  className="h-32 relative"
-                  style={{ backgroundColor: promotion.backgroundColor }}
-                >
+                <div className="h-32 relative bg-rose-600">
                   {promotion.image && (
                     <img
                       src={promotion.image}
@@ -280,17 +269,11 @@ const Promotions = () => {
                     />
                   )}
                   <div className="absolute inset-0 p-4 flex flex-col justify-center">
-                    <h3
-                      className="font-bold text-lg leading-tight"
-                      style={{ color: promotion.textColor }}
-                    >
+                    <h3 className="font-bold text-lg leading-tight text-white">
                       {promotion.title}
                     </h3>
                     {promotion.subtitle && (
-                      <p
-                        className="text-sm mt-1 opacity-90"
-                        style={{ color: promotion.textColor }}
-                      >
+                      <p className="text-sm mt-1 text-white/90">
                         {promotion.subtitle}
                       </p>
                     )}
@@ -378,10 +361,7 @@ const Promotions = () => {
               {/* Modal body */}
               <div className="p-4 space-y-4">
                 {/* Preview */}
-                <div
-                  className="rounded-xl overflow-hidden h-32 relative"
-                  style={{ backgroundColor: formData.backgroundColor }}
-                >
+                <div className="rounded-xl overflow-hidden h-32 relative bg-rose-600">
                   {imagePreview && (
                     <img
                       src={imagePreview}
@@ -390,17 +370,11 @@ const Promotions = () => {
                     />
                   )}
                   <div className="absolute inset-0 p-4 flex flex-col justify-center">
-                    <h3
-                      className="font-bold text-lg leading-tight"
-                      style={{ color: formData.textColor }}
-                    >
+                    <h3 className="font-bold text-lg leading-tight text-white">
                       {formData.title || 'Título de la promoción'}
                     </h3>
                     {formData.subtitle && (
-                      <p
-                        className="text-sm mt-1 opacity-90"
-                        style={{ color: formData.textColor }}
-                      >
+                      <p className="text-sm mt-1 text-white/90">
                         {formData.subtitle}
                       </p>
                     )}
@@ -464,48 +438,6 @@ const Promotions = () => {
                         <HiTrash className="w-5 h-5" />
                       </button>
                     )}
-                  </div>
-                </div>
-
-                {/* Colors */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Color de fondo
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={formData.backgroundColor}
-                        onChange={(e) => setFormData({ ...formData, backgroundColor: e.target.value })}
-                        className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={formData.backgroundColor}
-                        onChange={(e) => setFormData({ ...formData, backgroundColor: e.target.value })}
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Color de texto
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={formData.textColor}
-                        onChange={(e) => setFormData({ ...formData, textColor: e.target.value })}
-                        className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={formData.textColor}
-                        onChange={(e) => setFormData({ ...formData, textColor: e.target.value })}
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                      />
-                    </div>
                   </div>
                 </div>
 
