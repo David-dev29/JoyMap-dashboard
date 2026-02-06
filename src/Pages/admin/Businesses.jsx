@@ -35,6 +35,7 @@ import {
   HiOutlineLocationMarker,
   HiOutlineStar,
   HiOutlineOfficeBuilding,
+  HiOutlinePhotograph,
   HiChevronRight,
 } from 'react-icons/hi';
 import { Card, Button, Input, Select, Badge, Table, Modal, Avatar, Dropdown } from '../../components/ui';
@@ -270,6 +271,12 @@ const Businesses = () => {
   const [svgCode, setSvgCode] = useState('');
   const [svgError, setSvgError] = useState('');
 
+  // Image state (logo and banner)
+  const [logoFile, setLogoFile] = useState(null);
+  const [bannerFile, setBannerFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [bannerPreview, setBannerPreview] = useState(null);
+
   // Common emojis for businesses
   const COMMON_EMOJIS = [
     '🍔', '🍕', '🌮', '🍜', '🍣', '🍰', '☕', '🍺',
@@ -393,6 +400,35 @@ const Businesses = () => {
     setSvgError('');
   };
 
+  const resetImageState = () => {
+    setLogoFile(null);
+    setBannerFile(null);
+    setLogoPreview(null);
+    setBannerPreview(null);
+  };
+
+  const handleImageSelect = (type, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('La imagen no puede superar 5MB', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (type === 'logo') {
+        setLogoFile(file);
+        setLogoPreview(reader.result);
+      } else {
+        setBannerFile(file);
+        setBannerPreview(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Get current location using Geolocation API
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -509,39 +545,68 @@ const Businesses = () => {
       const lat = parseFloat(formData.latitude);
       const hasValidCoords = !isNaN(lng) && !isNaN(lat) && (lng !== 0 || lat !== 0);
 
-      const requestBody = {
-        name: formData.name,
-        category: formData.category,
-        description: formData.description,
-        address: formData.address,
-        phone: formData.phone,
-        email: formData.email,
-      };
+      // Use FormData if there are files to upload, otherwise use JSON
+      const hasFiles = logoFile || bannerFile;
 
-      if (hasValidCoords) {
-        requestBody.coordinates = [lng, lat];
-        requestBody.location = {
-          type: 'Point',
-          coordinates: [lng, lat]
-        };
-      }
+      let fetchOptions;
 
-      if (iconType === 'svg' && isValidSvg(svgCode)) {
-        requestBody.iconType = 'svg';
-        requestBody.iconSvg = svgCode.trim();
-      } else if (iconType === 'emoji' && selectedEmoji) {
-        requestBody.iconType = 'emoji';
-        requestBody.mapIcon = selectedEmoji;
+      if (hasFiles) {
+        const formDataToSend = new FormData();
+        formDataToSend.append('name', formData.name);
+        formDataToSend.append('category', formData.category);
+        formDataToSend.append('description', formData.description);
+        formDataToSend.append('address', formData.address);
+        formDataToSend.append('phone', formData.phone);
+        formDataToSend.append('email', formData.email);
+
+        if (hasValidCoords) {
+          formDataToSend.append('coordinates', JSON.stringify([lng, lat]));
+          formDataToSend.append('location', JSON.stringify({ type: 'Point', coordinates: [lng, lat] }));
+        }
+
+        if (iconType === 'svg' && isValidSvg(svgCode)) {
+          formDataToSend.append('iconType', 'svg');
+          formDataToSend.append('iconSvg', svgCode.trim());
+        } else if (iconType === 'emoji' && selectedEmoji) {
+          formDataToSend.append('iconType', 'emoji');
+          formDataToSend.append('mapIcon', selectedEmoji);
+        }
+
+        if (logoFile) formDataToSend.append('logo', logoFile);
+        if (bannerFile) formDataToSend.append('banner', bannerFile);
+
+        fetchOptions = { method: 'PUT', body: formDataToSend };
       } else {
-        requestBody.iconType = null;
-        requestBody.mapIcon = null;
-        requestBody.iconSvg = null;
+        const requestBody = {
+          name: formData.name,
+          category: formData.category,
+          description: formData.description,
+          address: formData.address,
+          phone: formData.phone,
+          email: formData.email,
+        };
+
+        if (hasValidCoords) {
+          requestBody.coordinates = [lng, lat];
+          requestBody.location = { type: 'Point', coordinates: [lng, lat] };
+        }
+
+        if (iconType === 'svg' && isValidSvg(svgCode)) {
+          requestBody.iconType = 'svg';
+          requestBody.iconSvg = svgCode.trim();
+        } else if (iconType === 'emoji' && selectedEmoji) {
+          requestBody.iconType = 'emoji';
+          requestBody.mapIcon = selectedEmoji;
+        } else {
+          requestBody.iconType = null;
+          requestBody.mapIcon = null;
+          requestBody.iconSvg = null;
+        }
+
+        fetchOptions = { method: 'PUT', body: JSON.stringify(requestBody) };
       }
 
-      const response = await authFetch(ENDPOINTS.businesses.byId(modalBusiness._id), {
-        method: 'PUT',
-        body: JSON.stringify(requestBody),
-      });
+      const response = await authFetch(ENDPOINTS.businesses.byId(modalBusiness._id), fetchOptions);
 
       const data = await response.json();
 
@@ -653,6 +718,7 @@ const Businesses = () => {
     });
     setFormErrors({});
     resetIconState();
+    resetImageState();
   };
 
   const openEditModal = (business) => {
@@ -688,6 +754,20 @@ const Businesses = () => {
       setSvgError('');
     } else {
       resetIconState();
+    }
+
+    // Set image previews from existing business data
+    setLogoFile(null);
+    setBannerFile(null);
+    if (business.logo) {
+      setLogoPreview(business.logo.startsWith('http') ? business.logo : `https://${business.logo}`);
+    } else {
+      setLogoPreview(null);
+    }
+    if (business.banner) {
+      setBannerPreview(business.banner.startsWith('http') ? business.banner : `https://${business.banner}`);
+    } else {
+      setBannerPreview(null);
     }
 
     setIsEditModalOpen(true);
@@ -1028,6 +1108,235 @@ const Businesses = () => {
               className="flex-1 px-4 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50"
             >
               {submitting ? 'Creando...' : 'Crear Negocio'}
+            </button>
+          </MobileModal.Footer>
+        </MobileModal>
+
+        {/* Edit Modal - Mobile */}
+        <MobileModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setModalBusiness(null);
+            resetForm();
+          }}
+          title="Editar Negocio"
+          size="xl"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Nombre *
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: Restaurante El Buen Sabor"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border ${formErrors.name ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-xl text-gray-900 dark:text-white`}
+              />
+              {formErrors.name && <p className="text-xs text-red-500 mt-1">{formErrors.name}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Categoria
+              </label>
+              <select
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white"
+              >
+                <option value="">Seleccionar categoria</option>
+                {businessCategories.map(cat => (
+                  <option key={cat._id} value={cat._id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Direccion *
+              </label>
+              <input
+                type="text"
+                placeholder="Direccion del negocio"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border ${formErrors.address ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-xl text-gray-900 dark:text-white`}
+              />
+              {formErrors.address && <p className="text-xs text-red-500 mt-1">{formErrors.address}</p>}
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Coordenadas
+                </label>
+                <button
+                  type="button"
+                  onClick={getCurrentLocation}
+                  disabled={gettingLocation}
+                  className="text-sm text-indigo-600 font-medium flex items-center gap-1"
+                >
+                  <Navigation size={14} />
+                  {gettingLocation ? 'Obteniendo...' : 'Usar mi ubicacion'}
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="number"
+                  placeholder="Latitud"
+                  value={formData.latitude}
+                  onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white"
+                  step="any"
+                />
+                <input
+                  type="number"
+                  placeholder="Longitud"
+                  value={formData.longitude}
+                  onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white"
+                  step="any"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Telefono
+                </label>
+                <input
+                  type="tel"
+                  placeholder="+52 999 123 4567"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  placeholder="email@negocio.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            {/* Emoji Selector */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Icono del negocio
+              </label>
+              <div className="grid grid-cols-8 gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl max-h-32 overflow-y-auto">
+                {COMMON_EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setSelectedEmoji(emoji)}
+                    className={`w-9 h-9 flex items-center justify-center text-xl rounded-lg transition-all ${
+                      selectedEmoji === emoji
+                        ? 'bg-indigo-100 dark:bg-indigo-900/50 ring-2 ring-indigo-500'
+                        : 'hover:bg-gray-200 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+              {selectedEmoji && (
+                <div className="flex items-center gap-2 mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  <span>Seleccionado: {selectedEmoji}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEmoji('')}
+                    className="text-red-500 underline text-xs"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Logo */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Logo
+              </label>
+              <div className="flex items-center gap-4">
+                {(logoPreview || modalBusiness?.logo) && (
+                  <img
+                    src={logoPreview || (modalBusiness?.logo?.startsWith('http') ? modalBusiness.logo : `https://${modalBusiness?.logo}`)}
+                    alt="Logo preview"
+                    className="w-16 h-16 rounded-xl object-cover border border-gray-200 dark:border-gray-700 flex-shrink-0"
+                  />
+                )}
+                <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer hover:border-indigo-500 transition-colors">
+                  <HiOutlinePhotograph className="w-5 h-5 text-gray-400" />
+                  <span className="text-sm text-gray-500">
+                    {logoFile ? logoFile.name : 'Cambiar logo'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageSelect('logo', e)}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Banner */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Banner
+              </label>
+              {(bannerPreview || modalBusiness?.banner) && (
+                <img
+                  src={bannerPreview || (modalBusiness?.banner?.startsWith('http') ? modalBusiness.banner : `https://${modalBusiness?.banner}`)}
+                  alt="Banner preview"
+                  className="w-full h-24 rounded-xl object-cover border border-gray-200 dark:border-gray-700 mb-2"
+                />
+              )}
+              <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer hover:border-indigo-500 transition-colors">
+                <HiOutlinePhotograph className="w-5 h-5 text-gray-400" />
+                <span className="text-sm text-gray-500">
+                  {bannerFile ? bannerFile.name : 'Cambiar banner'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleImageSelect('banner', e)}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
+
+          <MobileModal.Footer>
+            <button
+              onClick={() => {
+                setIsEditModalOpen(false);
+                setModalBusiness(null);
+                resetForm();
+              }}
+              className="flex-1 px-4 py-3 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleEditBusiness}
+              disabled={submitting}
+              className="flex-1 px-4 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {submitting ? 'Guardando...' : 'Guardar Cambios'}
             </button>
           </MobileModal.Footer>
         </MobileModal>
@@ -1549,6 +1858,199 @@ const Businesses = () => {
           </Button>
           <Button onClick={handleCreateBusiness} loading={submitting}>
             Crear Negocio
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Desktop Edit Modal */}
+      <Modal
+        isOpen={isEditModalOpen && !isMobile}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setModalBusiness(null);
+          resetForm();
+        }}
+        title="Editar Negocio"
+        description="Modifica los datos del negocio"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Nombre del negocio"
+              placeholder="Ej: Restaurante El Buen Sabor"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              error={formErrors.name}
+            />
+            <Select
+              label="Categoria"
+              options={businessCategories.map(cat => ({
+                value: cat._id,
+                label: cat.name,
+              }))}
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              placeholder="Seleccionar categoria"
+            />
+          </div>
+          <Input
+            label="Direccion"
+            placeholder="Direccion del negocio"
+            value={formData.address}
+            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            error={formErrors.address}
+            leftIcon={<MapPin size={18} />}
+          />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Coordenadas
+              </label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                leftIcon={<Navigation size={16} />}
+                onClick={getCurrentLocation}
+                loading={gettingLocation}
+              >
+                Obtener mi ubicacion
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                placeholder="Latitud (ej: 20.9674)"
+                value={formData.latitude}
+                onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                type="number"
+                step="any"
+              />
+              <Input
+                placeholder="Longitud (ej: -89.6235)"
+                value={formData.longitude}
+                onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                type="number"
+                step="any"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Telefono"
+              placeholder="+52 999 123 4567"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            />
+            <Input
+              label="Email"
+              type="email"
+              placeholder="contacto@negocio.com"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            />
+          </div>
+
+          {/* Emoji Selector */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Icono del negocio (para el mapa)
+            </label>
+            <div className="grid grid-cols-8 gap-2 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg max-h-32 overflow-y-auto">
+              {COMMON_EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => setSelectedEmoji(emoji)}
+                  className={`w-9 h-9 flex items-center justify-center text-xl rounded-lg transition-all hover:bg-gray-200 dark:hover:bg-slate-600 ${
+                    selectedEmoji === emoji
+                      ? 'bg-indigo-100 dark:bg-indigo-900/50 ring-2 ring-indigo-500'
+                      : ''
+                  }`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            {selectedEmoji && (
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <span>Seleccionado:</span>
+                <span className="text-2xl">{selectedEmoji}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedEmoji('')}
+                  className="text-red-500 hover:text-red-600 text-xs underline"
+                >
+                  Quitar
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Logo */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Logo
+            </label>
+            <div className="flex items-center gap-4">
+              {(logoPreview || modalBusiness?.logo) && (
+                <img
+                  src={logoPreview || (modalBusiness?.logo?.startsWith('http') ? modalBusiness.logo : `https://${modalBusiness?.logo}`)}
+                  alt="Logo preview"
+                  className="w-16 h-16 rounded-xl object-cover border border-gray-200 dark:border-slate-600 flex-shrink-0"
+                />
+              )}
+              <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-indigo-500 transition-colors">
+                <ImageIcon size={20} className="text-gray-400" />
+                <span className="text-sm text-gray-500">
+                  {logoFile ? logoFile.name : 'Cambiar logo'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleImageSelect('logo', e)}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Banner */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Banner
+            </label>
+            {(bannerPreview || modalBusiness?.banner) && (
+              <img
+                src={bannerPreview || (modalBusiness?.banner?.startsWith('http') ? modalBusiness.banner : `https://${modalBusiness?.banner}`)}
+                alt="Banner preview"
+                className="w-full h-28 rounded-lg object-cover border border-gray-200 dark:border-slate-600"
+              />
+            )}
+            <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-indigo-500 transition-colors">
+              <ImageIcon size={20} className="text-gray-400" />
+              <span className="text-sm text-gray-500">
+                {bannerFile ? bannerFile.name : 'Cambiar banner'}
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleImageSelect('banner', e)}
+                className="hidden"
+              />
+            </label>
+          </div>
+        </div>
+        <Modal.Footer>
+          <Button variant="ghost" onClick={() => {
+            setIsEditModalOpen(false);
+            setModalBusiness(null);
+            resetForm();
+          }}>
+            Cancelar
+          </Button>
+          <Button onClick={handleEditBusiness} loading={submitting}>
+            Guardar Cambios
           </Button>
         </Modal.Footer>
       </Modal>
