@@ -122,8 +122,8 @@ const MobileBusinessCard = ({ business, onCardTap, onEdit, onAssignOwner, onTogg
               <img src={business.logo.startsWith('http') ? business.logo : `https://${business.logo}`} alt={business.name} className="w-full h-full object-cover" />
             ) : business.mapIcon ? (
               <div dangerouslySetInnerHTML={{ __html: business.mapIcon }} className="w-8 h-8" />
-            ) : business.emoji ? (
-              <span className="text-2xl">{business.emoji}</span>
+            ) : business.mapIcon ? (
+              <span className="text-2xl">{business.mapIcon}</span>
             ) : (
               <span className="text-xl font-bold text-indigo-600">{business.name?.charAt(0)?.toUpperCase()}</span>
             )}
@@ -747,9 +747,9 @@ const Businesses = () => {
       setSvgCode(business.iconSvg);
       setSvgError('');
       setSelectedEmoji('');
-    } else if (business.emoji) {
+    } else if (business.mapIcon) {
       setIconType('emoji');
-      setSelectedEmoji(business.emoji);
+      setSelectedEmoji(business.mapIcon);
       setSvgCode('');
       setSvgError('');
     } else {
@@ -1420,8 +1420,8 @@ const Businesses = () => {
                 <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
                   {modalBusiness.logo ? (
                     <img src={modalBusiness.logo} alt={modalBusiness.name} className="w-full h-full object-cover" />
-                  ) : modalBusiness.emoji ? (
-                    <span className="text-3xl">{modalBusiness.emoji}</span>
+                  ) : modalBusiness.mapIcon ? (
+                    <span className="text-3xl">{modalBusiness.mapIcon}</span>
                   ) : (
                     <HiOutlineOfficeBuilding className="w-8 h-8 text-gray-400" />
                   )}
