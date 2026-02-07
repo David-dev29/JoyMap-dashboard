@@ -119,6 +119,14 @@ const MyBusiness = () => {
     transfer: false,
   });
 
+  // Bank info state (for transfer payments)
+  const [bankInfo, setBankInfo] = useState({
+    bankName: '',
+    accountNumber: '',
+    clabe: '',
+    accountHolder: '',
+  });
+
   // Brand color state
   const [brandColor, setBrandColor] = useState('#E53935');
 
@@ -175,6 +183,16 @@ const MyBusiness = () => {
             cash: businessData.paymentMethods.cash ?? true,
             card: businessData.paymentMethods.card ?? false,
             transfer: businessData.paymentMethods.transfer ?? false,
+          });
+        }
+
+        // Load bank info
+        if (businessData.bankInfo) {
+          setBankInfo({
+            bankName: businessData.bankInfo.bankName || '',
+            accountNumber: businessData.bankInfo.accountNumber || '',
+            clabe: businessData.bankInfo.clabe || '',
+            accountHolder: businessData.bankInfo.accountHolder || '',
           });
         }
 
@@ -330,6 +348,9 @@ const MyBusiness = () => {
       formDataToSend.append('isOpen', formData.isOpen);
       formDataToSend.append('schedule', JSON.stringify(schedule));
       formDataToSend.append('paymentMethods', JSON.stringify(paymentMethods));
+      if (paymentMethods.transfer) {
+        formDataToSend.append('bankInfo', JSON.stringify(bankInfo));
+      }
       formDataToSend.append('brandColor', brandColor);
 
       if (logoFile) {
@@ -594,6 +615,42 @@ const MyBusiness = () => {
                   onChange={(checked) => handlePaymentMethodChange('transfer', checked)}
                 />
               </label>
+
+              {/* Bank Info - only when transfer is enabled */}
+              {paymentMethods.transfer && (
+                <div className="mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl space-y-3">
+                  <p className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide">Datos bancarios</p>
+                  <input
+                    type="text"
+                    placeholder="Nombre del banco"
+                    value={bankInfo.bankName}
+                    onChange={(e) => setBankInfo({ ...bankInfo, bankName: e.target.value })}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-white"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Numero de cuenta"
+                    value={bankInfo.accountNumber}
+                    onChange={(e) => setBankInfo({ ...bankInfo, accountNumber: e.target.value })}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-white"
+                  />
+                  <input
+                    type="text"
+                    placeholder="CLABE interbancaria (18 digitos)"
+                    value={bankInfo.clabe}
+                    onChange={(e) => setBankInfo({ ...bankInfo, clabe: e.target.value })}
+                    maxLength={18}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-white"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Nombre del titular"
+                    value={bankInfo.accountHolder}
+                    onChange={(e) => setBankInfo({ ...bankInfo, accountHolder: e.target.value })}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-white"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -1095,6 +1152,56 @@ const MyBusiness = () => {
                   </div>
                 </div>
               </label>
+
+              {/* Bank Info - only when transfer is enabled */}
+              {paymentMethods.transfer && (
+                <div className="mt-1 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl space-y-3 border border-purple-200 dark:border-purple-800">
+                  <p className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide">Datos bancarios para transferencia</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Nombre del banco</label>
+                      <input
+                        type="text"
+                        placeholder="Ej: BBVA, Banorte, etc."
+                        value={bankInfo.bankName}
+                        onChange={(e) => setBankInfo({ ...bankInfo, bankName: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Numero de cuenta</label>
+                      <input
+                        type="text"
+                        placeholder="Numero de cuenta"
+                        value={bankInfo.accountNumber}
+                        onChange={(e) => setBankInfo({ ...bankInfo, accountNumber: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">CLABE interbancaria</label>
+                      <input
+                        type="text"
+                        placeholder="18 digitos"
+                        value={bankInfo.clabe}
+                        onChange={(e) => setBankInfo({ ...bankInfo, clabe: e.target.value })}
+                        maxLength={18}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Nombre del titular</label>
+                      <input
+                        type="text"
+                        placeholder="Nombre completo del titular"
+                        value={bankInfo.accountHolder}
+                        onChange={(e) => setBankInfo({ ...bankInfo, accountHolder: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
 
