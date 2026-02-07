@@ -186,6 +186,10 @@ const Categories = () => {
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
+  // Image state
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
@@ -243,6 +247,22 @@ const Categories = () => {
     return categories.filter(c => c.type === type).length;
   };
 
+  // Handle image selection
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('La imagen no puede superar 5MB', 'error');
+      return;
+    }
+
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setImagePreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
   // Handlers
   const handleSubmit = async () => {
     setFormErrors({});
@@ -259,24 +279,27 @@ const Categories = () => {
 
     setSubmitting(true);
     try {
-      const requestBody = {
-        name: formData.name,
-        slug: formData.slug,
-        icon: formData.icon,
-        type: formData.type,
-        description: formData.description,
-      };
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('slug', formData.slug);
+      formDataToSend.append('icon', formData.icon);
+      formDataToSend.append('type', formData.type);
+      formDataToSend.append('description', formData.description);
+
+      if (imageFile) {
+        formDataToSend.append('image', imageFile);
+      }
 
       let response;
       if (editingCategory) {
         response = await authFetch(`${ENDPOINTS.businessCategories.base}/${editingCategory._id}`, {
           method: 'PUT',
-          body: JSON.stringify(requestBody),
+          body: formDataToSend,
         });
       } else {
         response = await authFetch(ENDPOINTS.businessCategories.base, {
           method: 'POST',
-          body: JSON.stringify(requestBody),
+          body: formDataToSend,
         });
       }
 
@@ -332,6 +355,8 @@ const Categories = () => {
       description: '',
     });
     setFormErrors({});
+    setImageFile(null);
+    setImagePreview(null);
     setIsModalOpen(true);
   };
 
@@ -345,6 +370,12 @@ const Categories = () => {
       description: category.description || '',
     });
     setFormErrors({});
+    setImageFile(null);
+    if (category.image) {
+      setImagePreview(category.image.startsWith('http') ? category.image : `https://${category.image}`);
+    } else {
+      setImagePreview(null);
+    }
     setIsModalOpen(true);
   };
 
@@ -364,6 +395,8 @@ const Categories = () => {
       description: '',
     });
     setFormErrors({});
+    setImageFile(null);
+    setImagePreview(null);
   };
 
   const handleNameChange = (e) => {
@@ -447,6 +480,46 @@ const Categories = () => {
         value={formData.description}
         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
       />
+
+      {/* Image upload */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Imagen de la categoria
+        </label>
+        <div className="flex items-center gap-4">
+          {imagePreview && (
+            <img
+              src={imagePreview}
+              alt="Preview"
+              className="w-16 h-16 rounded-xl object-cover border border-gray-200 dark:border-gray-700 flex-shrink-0"
+            />
+          )}
+          <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer hover:border-indigo-500 transition-colors">
+            <Tag size={18} className="text-gray-400" />
+            <span className="text-sm text-gray-500">
+              {imageFile ? imageFile.name : imagePreview ? 'Cambiar imagen' : 'Seleccionar imagen'}
+            </span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+          </label>
+          {imagePreview && (
+            <button
+              type="button"
+              onClick={() => {
+                setImageFile(null);
+                setImagePreview(null);
+              }}
+              className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+            >
+              <Trash2 size={18} />
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 
