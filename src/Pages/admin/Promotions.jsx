@@ -8,7 +8,9 @@ import {
   HiX,
   HiMenuAlt4,
   HiEye,
-  HiEyeOff
+  HiEyeOff,
+  HiArrowUp,
+  HiArrowDown
 } from 'react-icons/hi';
 import { toast } from 'sonner';
 import { authFetch, API_BASE_URL } from '../../config/api';
@@ -32,10 +34,12 @@ const Promotions = () => {
   const [formData, setFormData] = useState({
     title: '',
     subtitle: '',
+    badge: '',
     type: 'carousel',
     linkType: 'none',
     linkValue: '',
     isActive: true,
+    contentOrder: ['title', 'badge', 'subtitle'],
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -82,10 +86,12 @@ const Promotions = () => {
       setFormData({
         title: promotion.title || '',
         subtitle: promotion.subtitle || '',
+        badge: promotion.badge || '',
         type: promotion.type || 'carousel',
         linkType: promotion.linkType || 'none',
         linkValue: promotion.linkValue || '',
         isActive: promotion.isActive ?? true,
+        contentOrder: promotion.contentOrder || ['title', 'badge', 'subtitle'],
       });
       setImagePreview(promotion.image);
     } else {
@@ -93,10 +99,12 @@ const Promotions = () => {
       setFormData({
         title: '',
         subtitle: '',
+        badge: '',
         type: 'carousel',
         linkType: 'none',
         linkValue: '',
         isActive: true,
+        contentOrder: ['title', 'badge', 'subtitle'],
       });
       setImagePreview(null);
     }
@@ -128,6 +136,8 @@ const Promotions = () => {
       formDataToSend.append('linkType', formData.linkType);
       formDataToSend.append('linkValue', formData.linkValue);
       formDataToSend.append('isActive', formData.isActive);
+      formDataToSend.append('badge', formData.badge);
+      formDataToSend.append('contentOrder', JSON.stringify(formData.contentOrder));
 
       if (imageFile) {
         formDataToSend.append('image', imageFile);
@@ -203,6 +213,17 @@ const Promotions = () => {
     }
   };
 
+  // Move content order item up/down
+  const moveOrderItem = (index, direction) => {
+    const newOrder = [...formData.contentOrder];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= newOrder.length) return;
+    [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
+    setFormData({ ...formData, contentOrder: newOrder });
+  };
+
+  const ORDER_LABELS = { title: 'Título', badge: 'Etiqueta', subtitle: 'Subtítulo' };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
@@ -269,14 +290,24 @@ const Promotions = () => {
                     />
                   )}
                   <div className="absolute inset-0 p-4 flex flex-col justify-center">
-                    <h3 className="font-bold text-lg leading-tight text-white">
-                      {promotion.title}
-                    </h3>
-                    {promotion.subtitle && (
-                      <p className="text-sm mt-1 text-white/90">
-                        {promotion.subtitle}
-                      </p>
-                    )}
+                    {(promotion.contentOrder || ['title', 'badge', 'subtitle']).map((item) => {
+                      if (item === 'title') return (
+                        <h3 key="title" className="font-bold text-lg leading-tight text-white">
+                          {promotion.title}
+                        </h3>
+                      );
+                      if (item === 'badge' && promotion.badge) return (
+                        <span key="badge" className="inline-block mt-1 px-2 py-0.5 bg-white/20 rounded-full text-xs font-semibold text-white w-fit">
+                          {promotion.badge}
+                        </span>
+                      );
+                      if (item === 'subtitle' && promotion.subtitle) return (
+                        <p key="subtitle" className="text-sm mt-1 text-white/90">
+                          {promotion.subtitle}
+                        </p>
+                      );
+                      return null;
+                    })}
                   </div>
                 </div>
 
@@ -370,14 +401,24 @@ const Promotions = () => {
                     />
                   )}
                   <div className="absolute inset-0 p-4 flex flex-col justify-center">
-                    <h3 className="font-bold text-lg leading-tight text-white">
-                      {formData.title || 'Título de la promoción'}
-                    </h3>
-                    {formData.subtitle && (
-                      <p className="text-sm mt-1 text-white/90">
-                        {formData.subtitle}
-                      </p>
-                    )}
+                    {formData.contentOrder.map((item) => {
+                      if (item === 'title') return (
+                        <h3 key="title" className="font-bold text-lg leading-tight text-white">
+                          {formData.title || 'Título de la promoción'}
+                        </h3>
+                      );
+                      if (item === 'badge' && formData.badge) return (
+                        <span key="badge" className="inline-block mt-1 px-2 py-0.5 bg-white/20 rounded-full text-xs font-semibold text-white w-fit">
+                          {formData.badge}
+                        </span>
+                      );
+                      if (item === 'subtitle' && formData.subtitle) return (
+                        <p key="subtitle" className="text-sm mt-1 text-white/90">
+                          {formData.subtitle}
+                        </p>
+                      );
+                      return null;
+                    })}
                   </div>
                 </div>
 
@@ -407,6 +448,57 @@ const Promotions = () => {
                     placeholder="Las mejores promos para compartir"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
+                </div>
+
+                {/* Badge */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Etiqueta (badge)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.badge}
+                    onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
+                    placeholder="Ej: Nuevo, Envío gratis, 2x1"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+
+                {/* Content Order */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Orden del contenido
+                  </label>
+                  <div className="space-y-2">
+                    {formData.contentOrder.map((item, index) => (
+                      <div
+                        key={item}
+                        className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
+                      >
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {index + 1}. {ORDER_LABELS[item]}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => moveOrderItem(index, -1)}
+                            disabled={index === 0}
+                            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                          >
+                            <HiArrowUp className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveOrderItem(index, 1)}
+                            disabled={index === formData.contentOrder.length - 1}
+                            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                          >
+                            <HiArrowDown className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Image */}
